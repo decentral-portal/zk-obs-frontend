@@ -3,8 +3,27 @@ import Image from "next/image";
 import { Inter } from "@next/font/google";
 import styles from "../styles/Home.module.css";
 import Header from "../components/Header";
+import TradingChart from "../components/TradingChart";
+import Ticket from "../components/Ticket";
+import History from "../components/History";
 
 const inter = Inter({ subsets: ["latin"] });
+
+const STYLES = {
+	SECTION: {
+		display: "flex",
+		flexDirection: "column" as const,
+		alignItems: "center",
+		justifyContent: "center",
+		width: "100%",
+	},
+	H1: {
+		fontSize: "1.5rem",
+		fontWeight: "bold" as const,
+		width: "80%",
+		margin: "1rem 0",
+	},
+};
 
 export default function Home() {
 	return (
@@ -26,6 +45,12 @@ export default function Home() {
 				/>
 			</Head>
 			<Header />
+			<div style={STYLES.SECTION}>
+				<h1 style={STYLES.H1}>goerliETH/testUSD</h1>
+				<TradingChart />
+				<Ticket />
+				<History />
+			</div>
 		</>
 	);
 }

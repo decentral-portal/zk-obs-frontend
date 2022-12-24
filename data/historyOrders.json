@@ -1,0 +1,42 @@
+[
+  {
+    "txId": "1",
+    "date": "2022-01-01 00:00:00",
+    "pair": "goerliETH/testUSD",
+    "type": "limited",
+    "orderType": "buy",
+    "price": "1200",
+    "amount": "1",
+    "state": "filled"
+  },
+  {
+    "txId": "2",
+    "date": "2022-01-01 00:00:00",
+    "pair": "goerliETH/testUSD",
+    "type": "limited",
+    "orderType": "sell",
+    "price": "1200",
+    "amount": "1",
+    "state": "filled"
+  },
+  {
+    "txId": "3",
+    "date": "2022-01-01 00:00:00",
+    "pair": "goerliETH/testUSD",
+    "type": "market",
+    "orderType": "buy",
+    "price": "1200",
+    "amount": "1",
+    "state": "filled"
+  },
+  {
+    "txId": "4",
+    "date": "2022-01-01 00:00:00",
+    "pair": "goerliETH/testUSD",
+    "type": "market",
+    "orderType": "sell",
+    "price": "1200",
+    "amount": "1",
+    "state": "filled"
+  }
+]
