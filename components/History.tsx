@@ -20,6 +20,7 @@ const STYLES = {
 		backgroundColor: "lightgray",
 		width: "80%",
 		margin: "1rem auto",
+		borderRadius: "12px",
 	},
 };
 

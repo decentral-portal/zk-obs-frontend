@@ -10,6 +10,7 @@ const STYLES = {
 		backgroundColor: "lightgray",
 		margin: "1rem auto",
 		width: "80%",
+		borderRadius: "12px",
 	},
 };
 

@@ -3,14 +3,14 @@ import "@rainbow-me/rainbowkit/styles.css";
 import type { AppProps } from "next/app";
 import { ChakraProvider } from "@chakra-ui/react";
 import { getDefaultWallets, RainbowKitProvider } from "@rainbow-me/rainbowkit";
-import { configureChains, createClient, WagmiConfig } from "wagmi";
+import { configureChains, createClient, goerli, WagmiConfig } from "wagmi";
 import { mainnet, polygon, optimism, arbitrum } from "wagmi/chains";
 import { alchemyProvider } from "wagmi/providers/alchemy";
 import { publicProvider } from "wagmi/providers/public";
 import { APP_ALCHEMY_ID } from "./config";
 
 const { chains, provider } = configureChains(
-	[mainnet, polygon, optimism, arbitrum],
+	[mainnet, polygon, optimism, arbitrum, goerli],
 	[alchemyProvider({ apiKey: APP_ALCHEMY_ID }), publicProvider()]
 );
 

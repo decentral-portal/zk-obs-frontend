@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Inter } from "@next/font/google";
 import styles from "../styles/Home.module.css";
 import Header from "../components/Header";
-import TradingChart from "../components/TradingChart";
+import Trading from "../components/Trading";
 import Ticket from "../components/Ticket";
 import History from "../components/History";
 
@@ -47,7 +47,7 @@ export default function Home() {
 			<Header />
 			<div style={STYLES.SECTION}>
 				<h1 style={STYLES.H1}>goerliETH/testUSD</h1>
-				<TradingChart />
+				<Trading />
 				<Ticket />
 				<History />
 			</div>
