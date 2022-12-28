@@ -8,19 +8,27 @@ import {
 	Thead,
 	Tr,
 } from "@chakra-ui/react";
-import { parseEther } from "ethers/lib/utils.js";
-import React, { Children, useEffect, useMemo, useState } from "react";
+import { formatEther, parseEther } from "ethers/lib/utils.js";
+import { useContractWrite } from "wagmi";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { goerli, useSigner } from "wagmi";
 import { Button, Spinner, useToast } from "@chakra-ui/react";
 import { BigNumber, ethers, utils } from "ethers";
 import TEST_USD_CNOTRACT_ABI from "../../abis/testUSD_abi.json";
+import ZK_OBS_CONTRACT_ABI from "../../abis/zkOBS_abi.json";
 import {
 	TEST_USD_CONTRACT_ADDR,
 	TokenLabel,
 	ZK_OBS_CONTRACT_ADDRESS,
 } from "../../pages/config";
-import { fetchApprovedAmt, fetchBalance } from "../../pages/utils";
+import {
+	fetchAccountId,
+	fetchApprovedAmt,
+	fetchBalance,
+	getRandBytes20,
+} from "../../pages/utils";
 import styles from "./Profile.module.css";
+import { TsAccountContext } from "../TsAccountProvider";
 
 const STYLES = {
 	BLUE: {
@@ -46,7 +54,13 @@ interface Available {
 export default function Profile() {
 	const toast = useToast();
 	const { data: signer } = useSigner();
-	const [isLoading, setIsLoading] = useState(false);
+	const { tsAccount } = useContext(TsAccountContext);
+	const [isLoading, setIsLoading] = useState({
+		approve: false,
+		deposit: false,
+		withdraw: false,
+		mint: false,
+	});
 	const [balance, setBalance] = useState<Balance>({
 		goerliETH: "0",
 		testUSD: "0",
@@ -66,7 +80,7 @@ export default function Profile() {
 	const [approvedAmt, setApprovedAmt] = useState("0");
 	const [isApproved, setIsApproved] = useState(true);
 
-	useMemo(async () => {
+	const updateBalance = async () => {
 		if (signer) {
 			const ethBalance = await signer.getBalance();
 			const testUSDBalance = await fetchBalance(TEST_USD_CONTRACT_ADDR, signer);
@@ -75,12 +89,16 @@ export default function Profile() {
 				testUSD: utils.formatEther(testUSDBalance).slice(0, 6),
 			});
 		}
+	};
+
+	useEffect(() => {
+		updateBalance();
 	}, [signer]);
 
 	const mint = async () => {
 		if (signer)
 			try {
-				setIsLoading(true);
+				setIsLoading({ ...isLoading, mint: true });
 				const contract = new ethers.Contract(
 					TEST_USD_CONTRACT_ADDR,
 					TEST_USD_CNOTRACT_ABI,
@@ -89,8 +107,9 @@ export default function Profile() {
 				const mintAmt = utils.parseUnits("1000", 18);
 				const res = await contract.mint(mintAmt);
 				const txReceipt = await res.wait();
+				updateBalance();
 				if (txReceipt.transactionHash) {
-					setIsLoading(false);
+					setIsLoading({ ...isLoading, mint: false });
 					toast({
 						title: "Minted 1000 testUSD",
 						status: "success",
@@ -100,7 +119,7 @@ export default function Profile() {
 					});
 				}
 			} catch (error) {
-				setIsLoading(false);
+				setIsLoading({ ...isLoading, mint: false });
 				toast({
 					title: "Error minting testUSD",
 					status: "error",
@@ -111,7 +130,169 @@ export default function Profile() {
 			}
 	};
 
-	const handleDeposit = async () => {};
+	const handleDeposit = async () => {
+		if (signer && tsAccount) {
+			const accountId = await fetchAccountId(signer);
+			setIsLoading({ ...isLoading, deposit: true });
+			const l2Addr = tsAccount.tsAddr;
+			const depositAmt = depositInfo.amount;
+			const contract = new ethers.Contract(
+				ZK_OBS_CONTRACT_ADDRESS,
+				ZK_OBS_CONTRACT_ABI,
+				signer
+			);
+			if (depositInfo.token === TokenLabel.goerliETH) {
+				if (accountId === 0) {
+					try {
+						const res = await contract.registerETH(l2Addr, depositAmt);
+						const txReceipt = await res.wait();
+						updateBalance();
+						if (txReceipt.transactionHash) {
+							setIsLoading({ ...isLoading, deposit: false });
+							toast({
+								title: `Deposited ${formatEther(depositInfo.amount)} goerliETH`,
+								status: "success",
+								position: "top",
+								duration: 5000,
+								isClosable: true,
+							});
+						}
+					} catch (error) {
+						setIsLoading({ ...isLoading, deposit: false });
+						toast({
+							title: "Error depositing goerliETH",
+							status: "error",
+							position: "top",
+							duration: 5000,
+							isClosable: true,
+						});
+					}
+				} else {
+					try {
+						const res = await contract.depositETH(depositAmt);
+						const txReceipt = await res.wait();
+						updateBalance();
+						if (txReceipt.transactionHash) {
+							setIsLoading({ ...isLoading, deposit: false });
+							toast({
+								title: `Deposited ${formatEther(depositInfo.amount)} goerliETH`,
+								status: "success",
+								position: "top",
+								duration: 5000,
+								isClosable: true,
+							});
+						}
+					} catch (error) {
+						setIsLoading({ ...isLoading, deposit: false });
+						toast({
+							title: "Error depositing goerliETH",
+							status: "error",
+							position: "top",
+							duration: 5000,
+							isClosable: true,
+						});
+					}
+				}
+			} else {
+				if (accountId === 0) {
+					try {
+						const res = await contract.registerERC20(
+							l2Addr,
+							TEST_USD_CONTRACT_ADDR,
+							depositAmt
+						);
+						const txReceipt = await res.wait();
+						updateBalance();
+						if (txReceipt.transactionHash) {
+							setIsLoading({ ...isLoading, deposit: false });
+							toast({
+								title: `Deposited ${formatEther(depositInfo.amount)} testUSD`,
+								status: "success",
+								position: "top",
+								duration: 5000,
+								isClosable: true,
+							});
+						}
+					} catch (error) {
+						setIsLoading({ ...isLoading, deposit: false });
+						toast({
+							title: "Error depositing testUSD",
+							status: "error",
+							position: "top",
+							duration: 5000,
+							isClosable: true,
+						});
+					}
+				} else {
+					try {
+						const res = await contract.depositERC20(
+							TEST_USD_CONTRACT_ADDR,
+							depositAmt
+						);
+						const txReceipt = await res.wait();
+						updateBalance();
+						if (txReceipt.transactionHash) {
+							setIsLoading({ ...isLoading, deposit: false });
+							toast({
+								title: `Deposited ${formatEther(depositInfo.amount)} testUSD`,
+								status: "success",
+								position: "top",
+								duration: 5000,
+								isClosable: true,
+							});
+						}
+					} catch (error) {
+						setIsLoading({ ...isLoading, deposit: false });
+						toast({
+							title: "Error depositing testUSD",
+							status: "error",
+							position: "top",
+							duration: 5000,
+							isClosable: true,
+						});
+					}
+				}
+			}
+		}
+	};
+
+	const handleApprove = async () => {
+		if (signer)
+			try {
+				setIsLoading({ ...isLoading, approve: true });
+				const contract = new ethers.Contract(
+					TEST_USD_CONTRACT_ADDR,
+					TEST_USD_CNOTRACT_ABI,
+					signer
+				);
+				const res = await contract.approve(
+					ZK_OBS_CONTRACT_ADDRESS,
+					ethers.constants.MaxUint256
+				);
+				const txReceipt = await res.wait();
+				updateBalance();
+				setIsApproved(true);
+				if (txReceipt.transactionHash) {
+					setIsLoading({ ...isLoading, approve: false });
+					toast({
+						title: "Approved testUSD",
+						status: "success",
+						position: "top",
+						duration: 5000,
+						isClosable: true,
+					});
+				}
+			} catch (error) {
+				setIsLoading({ ...isLoading, approve: false });
+				toast({
+					title: "Error approving testUSD",
+					status: "error",
+					position: "top",
+					duration: 5000,
+					isClosable: true,
+				});
+			}
+	};
 
 	const selectDepositToken = (token: TokenLabel) => {
 		setDepositInfo({ ...depositInfo, token });
@@ -122,7 +303,12 @@ export default function Profile() {
 	};
 
 	const setDepositAmount = (amount: string) => {
-		setDepositInfo({ ...depositInfo, amount });
+		if (amount === "") {
+			setDepositInfo({ ...depositInfo, amount: "0" });
+		} else {
+			amount = parseEther(amount).toString();
+			setDepositInfo({ ...depositInfo, amount });
+		}
 	};
 
 	useMemo(async () => {
@@ -132,14 +318,25 @@ export default function Profile() {
 				ZK_OBS_CONTRACT_ADDRESS,
 				signer
 			);
-			setApprovedAmt(utils.formatEther(approvedAmt));
-			if (approvedAmt.gt(parseEther("0"))) {
-				setIsApproved(true);
-			} else {
-				setIsApproved(false);
-			}
+			setApprovedAmt(approvedAmt);
 		}
 	}, [signer]);
+
+	useEffect(() => {
+		if (signer) {
+			if (depositInfo.token === TokenLabel.goerliETH) {
+				setIsApproved(true);
+			} else {
+				if (
+					BigNumber.from(approvedAmt).gte(BigNumber.from(depositInfo.amount))
+				) {
+					setIsApproved(true);
+				} else {
+					setIsApproved(false);
+				}
+			}
+		}
+	}, [depositInfo, approvedAmt, signer]);
 
 	return (
 		<div className={styles.CONTAINER}>
@@ -158,12 +355,12 @@ export default function Profile() {
 							<Tr>
 								<Td>goerliETH</Td>
 								<Td>{balance.goerliETH}</Td>
-								<Td>100</Td>
+								<Td>{available.goerliETH}</Td>
 							</Tr>
 							<Tr>
 								<Td>testUSD</Td>
 								<Td>{balance.testUSD}</Td>
-								<Td>100</Td>
+								<Td>{available.testUSD}</Td>
 							</Tr>
 						</Tbody>
 					</Table>
@@ -203,13 +400,23 @@ export default function Profile() {
 							}}
 						/>
 					</div>
-					<Button
-						width="150px"
-						colorScheme="blue"
-						onClick={() => handleDeposit()}
-					>
-						{isApproved ? `Deposit` : `Approve`}
-					</Button>
+					{isApproved ? (
+						<Button
+							width="150px"
+							colorScheme="blue"
+							onClick={() => handleDeposit()}
+						>
+							{isLoading.deposit ? <Spinner /> : "Deposit"}
+						</Button>
+					) : (
+						<Button
+							width="150px"
+							colorScheme="blue"
+							onClick={() => handleApprove()}
+						>
+							{isLoading.approve ? <Spinner /> : "Approve"}
+						</Button>
+					)}
 				</div>
 				<div className={styles.CARD}>
 					<div>
@@ -245,7 +452,7 @@ export default function Profile() {
 			<div className={styles.BOX}>
 				<h1 className={styles.H1}>Faucet</h1>
 				<Button colorScheme="blue" onClick={() => mint()}>
-					{isLoading ? <Spinner /> : "Mint 1000 testUSD"}
+					{isLoading.mint ? <Spinner /> : "Mint 1000 testUSD"}
 				</Button>
 			</div>
 		</div>

@@ -32,39 +32,6 @@ const STYLES = {
 };
 
 export default function Home() {
-	const { chain, chains } = useNetwork();
-	const { address, isConnected } = useAccount();
-	const { switchNetwork } = useSwitchNetwork();
-	const { authUser, fetchTsAccount, isAuthenticated, addressOrEnsName } =
-		useContext(TsAccountContext);
-	const { data: connectData, connectAsync } = useConnect({
-		connector: new InjectedConnector(),
-	});
-
-	useEffect(() => {
-		const connectedChainId = connectData?.chain.id;
-		if (connectedChainId != VALID_CHAIN.id) {
-			try {
-				switchNetwork?.(VALID_CHAIN.id);
-			} catch (error) {
-				Toast({
-					title: "Error",
-					description: `Plz switch to ${VALID_CHAIN.name} network`,
-					position: "top",
-					status: "error",
-					duration: 9000,
-					isClosable: true,
-				});
-			}
-		}
-	}, [connectData, switchNetwork]);
-
-	useEffect(() => {
-		if (isConnected && !isAuthenticated && chain?.id === VALID_CHAIN.id) {
-			authUser();
-			fetchTsAccount();
-		}
-	}, [isConnected, address, chain, authUser, fetchTsAccount, isAuthenticated]);
 	return (
 		<>
 			<Head>

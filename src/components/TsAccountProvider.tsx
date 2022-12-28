@@ -1,11 +1,25 @@
-import { createContext, useCallback, useMemo, useState } from "react";
+import {
+	createContext,
+	useCallback,
+	useMemo,
+	useState,
+	useEffect,
+} from "react";
 import { utils } from "ethers";
 import { arrayify } from "ethers/lib/utils";
-import { useAccount, useEnsName } from "wagmi";
-import { PRIV_HASH_ITERATIONS } from "../pages/config";
+import {
+	useAccount,
+	useEnsName,
+	useSwitchNetwork,
+	useNetwork,
+	useConnect,
+} from "wagmi";
+import { InjectedConnector } from "wagmi/connectors/injected";
+import { PRIV_HASH_ITERATIONS, VALID_CHAIN } from "../pages/config";
 import { useSignAuth } from "../hooks/useSignAuth";
 import { shortenAddress } from "../pages/utils";
-import { TsRollupSigner } from "../zk-obs-sdk/dist/lib/ts-rollup/ts-account";
+import { TsRollupSigner } from "zk-obs-sdk";
+import { Toast } from "@chakra-ui/react";
 
 export const TsAccountContext = createContext<{
 	tsAccount: TsRollupSigner | undefined;
@@ -41,6 +55,11 @@ export const TsAccountProvider = ({ children }: { children: any }) => {
 	const [profile, setProfile] = useState<any>();
 	const [nonce, setNonce] = useState<number>(0);
 	const { data: ensName } = useEnsName({ address });
+	const { chain } = useNetwork();
+	const { switchNetwork } = useSwitchNetwork();
+	const { data: connectData } = useConnect({
+		connector: new InjectedConnector(),
+	});
 
 	const setTsAccount = useCallback((signature?: string) => {
 		if (signature) {
@@ -111,6 +130,31 @@ export const TsAccountProvider = ({ children }: { children: any }) => {
 		}
 		return "";
 	}, [address, ensName]);
+
+	useEffect(() => {
+		const connectedChainId = connectData?.chain.id;
+		if (connectedChainId != VALID_CHAIN.id) {
+			try {
+				switchNetwork?.(VALID_CHAIN.id);
+			} catch (error) {
+				Toast({
+					title: "Error",
+					description: `Plz switch to ${VALID_CHAIN.name} network`,
+					position: "top",
+					status: "error",
+					duration: 9000,
+					isClosable: true,
+				});
+			}
+		}
+	}, [connectData, switchNetwork]);
+
+	useEffect(() => {
+		if (isConnected && !isAuthenticated && chain?.id === VALID_CHAIN.id) {
+			authUser();
+			fetchTsAccount();
+		}
+	}, [isConnected, address, chain, authUser, fetchTsAccount, isAuthenticated]);
 
 	return (
 		<TsAccountContext.Provider
