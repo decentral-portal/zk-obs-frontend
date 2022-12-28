@@ -6,6 +6,12 @@ import Header from "../components/Header";
 import Trading from "../components/Trading";
 import Ticket from "../components/Ticket";
 import History from "../components/History";
+import { Toast } from "@chakra-ui/react";
+import { useContext, useEffect } from "react";
+import { useNetwork, useAccount, useSwitchNetwork, useConnect } from "wagmi";
+import { InjectedConnector } from "wagmi/connectors/injected";
+import { TsAccountContext } from "../components/TsAccountProvider";
+import { VALID_CHAIN } from "./config";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,6 +32,39 @@ const STYLES = {
 };
 
 export default function Home() {
+	const { chain, chains } = useNetwork();
+	const { address, isConnected } = useAccount();
+	const { switchNetwork } = useSwitchNetwork();
+	const { authUser, fetchTsAccount, isAuthenticated, addressOrEnsName } =
+		useContext(TsAccountContext);
+	const { data: connectData, connectAsync } = useConnect({
+		connector: new InjectedConnector(),
+	});
+
+	useEffect(() => {
+		const connectedChainId = connectData?.chain.id;
+		if (connectedChainId != VALID_CHAIN.id) {
+			try {
+				switchNetwork?.(VALID_CHAIN.id);
+			} catch (error) {
+				Toast({
+					title: "Error",
+					description: `Plz switch to ${VALID_CHAIN.name} network`,
+					position: "top",
+					status: "error",
+					duration: 9000,
+					isClosable: true,
+				});
+			}
+		}
+	}, [connectData, switchNetwork]);
+
+	useEffect(() => {
+		if (isConnected && !isAuthenticated && chain?.id === VALID_CHAIN.id) {
+			authUser();
+			fetchTsAccount();
+		}
+	}, [isConnected, address, chain, authUser, fetchTsAccount, isAuthenticated]);
 	return (
 		<>
 			<Head>

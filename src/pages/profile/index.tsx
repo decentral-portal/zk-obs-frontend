@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import Profile from "../../components/Profile";
+import Profile from "../../components/Profile/Profile";
 import Header from "../../components/Header";
 import Banner from "../../components/Banner";
 

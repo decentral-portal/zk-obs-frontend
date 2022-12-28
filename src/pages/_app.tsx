@@ -4,13 +4,19 @@ import type { AppProps } from "next/app";
 import { ChakraProvider } from "@chakra-ui/react";
 import { getDefaultWallets, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { configureChains, createClient, goerli, WagmiConfig } from "wagmi";
-import { mainnet, polygon, optimism, arbitrum } from "wagmi/chains";
+import { mainnet } from "wagmi/chains";
 import { alchemyProvider } from "wagmi/providers/alchemy";
 import { publicProvider } from "wagmi/providers/public";
 import { APP_ALCHEMY_ID } from "./config";
+import {
+	TsAccountContext,
+	TsAccountProvider,
+} from "../components/TsAccountProvider";
+import { useContext, useEffect } from "react";
+import { InjectedConnector } from "wagmi/connectors/injected";
 
 const { chains, provider } = configureChains(
-	[mainnet, polygon, optimism, arbitrum, goerli],
+	[mainnet, goerli],
 	[alchemyProvider({ apiKey: APP_ALCHEMY_ID }), publicProvider()]
 );
 
@@ -30,7 +36,9 @@ export default function App({ Component, pageProps }: AppProps) {
 		<ChakraProvider>
 			<WagmiConfig client={wagmiClient}>
 				<RainbowKitProvider chains={chains}>
-					<Component {...pageProps} />
+					<TsAccountProvider>
+						<Component {...pageProps} />
+					</TsAccountProvider>
 				</RainbowKitProvider>
 			</WagmiConfig>
 		</ChakraProvider>

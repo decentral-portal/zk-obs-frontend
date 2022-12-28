@@ -1,8 +1,13 @@
-import React from "react";
+import React, { useContext, useEffect, useMemo } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { UrlObject } from "url";
+import { useAccount, useConnect, useNetwork, useSwitchNetwork } from "wagmi";
+import { InjectedConnector } from "wagmi/connectors/injected";
+import { TsAccountContext } from "./TsAccountProvider";
+import { VALID_CHAIN } from "../pages/config";
+import { Toast } from "@chakra-ui/react";
 
 declare type Url = string | UrlObject;
 
