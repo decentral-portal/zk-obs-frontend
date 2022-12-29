@@ -1,7 +1,7 @@
 import { Contract, Signer, ethers } from "ethers";
 import { Bytes, getAddress } from 'ethers/lib/utils';
 import ERC20_ABI from "../abis/erc20_abi.json";
-import { ZK_OBS_CONTRACT_ADDRESS } from "./config";
+import { ZK_OBS_CONTRACT_ADDRESS } from "../config";
 import ZK_OBS_CONTRACT_ABI from "../abis/zkOBS_abi.json";
 
 export const fetchBalance = async (tokenAddr: string, signer: Signer) => {

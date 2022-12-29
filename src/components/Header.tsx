@@ -1,13 +1,10 @@
-import React, { useContext, useEffect, useMemo } from "react";
+import React from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import { Image } from "@chakra-ui/react";
+import iconImg from "../assets/icon.png";
 import { UrlObject } from "url";
-import { useAccount, useConnect, useNetwork, useSwitchNetwork } from "wagmi";
-import { InjectedConnector } from "wagmi/connectors/injected";
-import { TsAccountContext } from "./TsAccountProvider";
-import { VALID_CHAIN } from "../pages/config";
-import { Toast } from "@chakra-ui/react";
 
 declare type Url = string | UrlObject;
 
@@ -17,9 +14,14 @@ const STYLES = {
 		justifyContent: "space-between",
 		alignItems: "center",
 		backgroundColor: "gray",
-		padding: "0 50px",
+		padding: "0 30px",
 		height: "80px",
 		width: "100%",
+	},
+	LOGOBOX: {
+		display: "flex",
+		flexDirection: "row" as const,
+		alignItems: "center",
 	},
 	TITLE: {
 		fontSize: "36px",
@@ -49,7 +51,10 @@ const STYLES = {
 export default function Header() {
 	return (
 		<div style={STYLES.HEADER}>
-			<div style={STYLES.TITLE}>ZK-OBS</div>
+			<div style={STYLES.LOGOBOX}>
+				<Image src={iconImg.src} boxSize="85px" alt="icon" p={4} />
+				<div style={STYLES.TITLE}>ZK-OBS</div>
+			</div>
 			<div style={STYLES.BOX}>
 				<div style={STYLES.SELECTOR}>
 					<Link href={"/" as Url}>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSignTypedData } from 'wagmi';
-import { ZK_OBS_CONTRACT_ADDRESS, VALID_CHAIN } from '../pages/config';
+import { ZK_OBS_CONTRACT_ADDRESS, VALID_CHAIN } from '../config';
 
 export const useSignAuth = () => {
   const [typedData, setTypedData] = useState<any>({

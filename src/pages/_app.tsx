@@ -7,7 +7,7 @@ import { configureChains, createClient, goerli, WagmiConfig } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import { alchemyProvider } from "wagmi/providers/alchemy";
 import { publicProvider } from "wagmi/providers/public";
-import { APP_ALCHEMY_ID } from "./config";
+import { APP_ALCHEMY_ID } from "../config";
 import {
 	TsAccountContext,
 	TsAccountProvider,

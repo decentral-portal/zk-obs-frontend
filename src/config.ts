@@ -9,6 +9,16 @@ export enum TokenLabel {
   goerliETH = 'goerliETH',
   testUSD = 'testUSD',
 }
+
+export enum MarketType {
+  LIMIT = 'LIMIT',
+  MARKET = 'MARKET',
+}
+
+export enum OrderType {
+  BUY = 'BUY',
+  SELL = 'SELL',
+}
   
 function getString(value: any, defaultValue?: string) {
   if (typeof value === 'string') return value;

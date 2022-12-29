@@ -1,6 +1,7 @@
 import { Tabs, TabList, Tab, TabPanels, TabPanel } from "@chakra-ui/react";
 import React from "react";
 import OrderBox from "./OrderBox";
+import { MarketType } from "../config";
 
 const STYLES = {
 	CONTAINER: {
@@ -29,10 +30,10 @@ export default function Ticket() {
 				</TabList>
 				<TabPanels>
 					<TabPanel>
-						<OrderBox marketType="limited" tokens={TOKENS} />
+						<OrderBox marketType={MarketType.LIMIT} tokens={TOKENS} />
 					</TabPanel>
 					<TabPanel>
-						<OrderBox marketType="market" tokens={TOKENS} />
+						<OrderBox marketType={MarketType.MARKET} tokens={TOKENS} />
 					</TabPanel>
 				</TabPanels>
 			</Tabs>

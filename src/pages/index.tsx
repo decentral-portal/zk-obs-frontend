@@ -11,7 +11,7 @@ import { useContext, useEffect } from "react";
 import { useNetwork, useAccount, useSwitchNetwork, useConnect } from "wagmi";
 import { InjectedConnector } from "wagmi/connectors/injected";
 import { TsAccountContext } from "../components/TsAccountProvider";
-import { VALID_CHAIN } from "./config";
+import { VALID_CHAIN } from "../config";
 
 const inter = Inter({ subsets: ["latin"] });
 

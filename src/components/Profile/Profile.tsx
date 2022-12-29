@@ -20,13 +20,13 @@ import {
 	TEST_USD_CONTRACT_ADDR,
 	TokenLabel,
 	ZK_OBS_CONTRACT_ADDRESS,
-} from "../../pages/config";
+} from "../../config";
 import {
 	fetchAccountId,
 	fetchApprovedAmt,
 	fetchBalance,
 	getRandBytes20,
-} from "../../pages/utils";
+} from "../utils";
 import styles from "./Profile.module.css";
 import { TsAccountContext } from "../TsAccountProvider";
 

@@ -1,5 +1,7 @@
 import React from "react";
-import OrderCard from "./OrderCard";
+import LimitOrderCard from "./LimitOrderCard";
+import { MarketType, OrderType } from "../config";
+import MarketOrderCard from "./MarketOrderCard";
 
 const STYLES = {
 	CONTAINER: {
@@ -13,7 +15,7 @@ const STYLES = {
 };
 
 interface OrderBoxProps {
-	marketType: "limited" | "market";
+	marketType: MarketType;
 	tokens: {
 		tokenA: string;
 		tokenB: string;
@@ -24,8 +26,17 @@ export default function OrderBox(props: OrderBoxProps) {
 	const { marketType, tokens } = props;
 	return (
 		<div style={STYLES.CONTAINER}>
-			<OrderCard marketType={marketType} orderType="buy" tokens={tokens} />
-			<OrderCard marketType={marketType} orderType="sell" tokens={tokens} />
+			{marketType === MarketType.LIMIT ? (
+				<>
+					<LimitOrderCard orderType={OrderType.BUY} tokens={tokens} />
+					<LimitOrderCard orderType={OrderType.SELL} tokens={tokens} />
+				</>
+			) : (
+				<>
+					<MarketOrderCard orderType={OrderType.BUY} tokens={tokens} />
+					<MarketOrderCard orderType={OrderType.SELL} tokens={tokens} />
+				</>
+			)}
 		</div>
 	);
 }

@@ -15,9 +15,9 @@ import {
 	useConnect,
 } from "wagmi";
 import { InjectedConnector } from "wagmi/connectors/injected";
-import { PRIV_HASH_ITERATIONS, VALID_CHAIN } from "../pages/config";
+import { PRIV_HASH_ITERATIONS, VALID_CHAIN } from "../config";
 import { useSignAuth } from "../hooks/useSignAuth";
-import { shortenAddress } from "../pages/utils";
+import { shortenAddress } from "./utils";
 import { TsRollupSigner } from "zk-obs-sdk";
 import { Toast } from "@chakra-ui/react";
 

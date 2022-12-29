@@ -1,6 +1,4 @@
-import React from "react";
-import { Image } from "@chakra-ui/react";
-import iconImg from "../assets/icon.png";
+import React, { useEffect } from "react";
 
 const STYLES = {
 	CONTAINER: {
@@ -12,16 +10,15 @@ const STYLES = {
 		width: "60%",
 	},
 	H1: {
-		fontSize: "2rem",
+		fontSize: "3rem",
 		fontWeight: "bold" as const,
-		margin: "0 auto",
+		margin: "1rem auto",
 	},
 };
 
 export default function Banner() {
 	return (
 		<div style={STYLES.CONTAINER}>
-			<Image src={iconImg.src} boxSize="200px" alt="icon" p={4} />
 			<h1 style={STYLES.H1}>
 				Zero-knowledge
 				<br />
