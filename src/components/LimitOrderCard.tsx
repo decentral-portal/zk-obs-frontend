@@ -10,7 +10,7 @@ import { TsTokenAddress, TsTxLimitOrderRequest, TsTxType } from "zk-obs-sdk";
 import { OrderType } from "../config";
 import { TsAccountContext } from "./TsAccountProvider";
 import { useSigner } from "wagmi";
-import { BigNumber } from "ethers";
+import { BigNumber, utils } from "ethers";
 import { useSignLimitOrderReq } from "../hooks/useSignLimitOrder";
 
 const STYLES = {
@@ -101,7 +101,7 @@ export default function LimitOrderCard(props: OrderCardProps) {
 		const buyAmt = getBuyAmt(price, amount);
 		setOrderInfo({
 			...orderInfo,
-			sellAmt: amount.toString(),
+			sellAmt: amount,
 			buyAmt: buyAmt,
 		});
 	};
@@ -122,7 +122,7 @@ export default function LimitOrderCard(props: OrderCardProps) {
 		}
 	};
 
-	const handleOrder = useCallback(async () => {
+	const handleOrder = async () => {
 		if (signer && tsAccount) {
 			setIsLoading(true);
 			const req = tsAccount.prepareTxLimitOrder(
@@ -144,7 +144,7 @@ export default function LimitOrderCard(props: OrderCardProps) {
 				console.error(error);
 			}
 		}
-	}, [signer, tsAccount, signTypedDataAsync]);
+	};
 
 	useEffect(() => {
 		if (isSuccess && ecdsaSig) {
@@ -183,7 +183,7 @@ export default function LimitOrderCard(props: OrderCardProps) {
 					type="amt"
 					placeholder="amount"
 					onChange={(e) => {
-						setAmt(e.target.value);
+						setAmt(utils.parseEther(e.target.value).toString());
 					}}
 				/>
 				<InputRightAddon>

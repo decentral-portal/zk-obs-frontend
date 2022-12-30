@@ -11,6 +11,7 @@ import { OrderType } from "../config";
 import { TsAccountContext } from "./TsAccountProvider";
 import { useSigner } from "wagmi";
 import { useSignMarketOrderReq } from "../hooks/useSignMarketOrder";
+import { utils } from "ethers";
 
 const STYLES = {
 	CONTAINER: {
@@ -96,11 +97,11 @@ export default function MarketOrderCard(props: OrderCardProps) {
 	const setAmt = (amount: string) => {
 		setOrderInfo({
 			...orderInfo,
-			sellAmt: amount.toString(),
+			sellAmt: amount,
 		});
 	};
 
-	const handleOrder = useCallback(async () => {
+	const handleOrder = async () => {
 		if (signer && tsAccount) {
 			setIsLoading(true);
 			const req = tsAccount.prepareTxMarketOrder(
@@ -122,7 +123,7 @@ export default function MarketOrderCard(props: OrderCardProps) {
 				console.error(error);
 			}
 		}
-	}, [signer, tsAccount, signTypedDataAsync]);
+	};
 
 	useEffect(() => {
 		if (isSuccess && ecdsaSig) {
@@ -156,7 +157,7 @@ export default function MarketOrderCard(props: OrderCardProps) {
 					type="amt"
 					placeholder="amount"
 					onChange={(e) => {
-						setAmt(e.target.value);
+						setAmt(utils.parseEther(e.target.value).toString());
 					}}
 				/>
 				{orderType === OrderType.BUY ? (

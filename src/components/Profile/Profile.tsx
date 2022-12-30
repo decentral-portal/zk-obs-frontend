@@ -23,6 +23,8 @@ import {
 import { fetchAccountId, fetchApprovedAmt, fetchBalance } from "../utils";
 import styles from "./Profile.module.css";
 import { TsAccountContext } from "../TsAccountProvider";
+import { TsTokenAddress, TsTxType, TsTxWithdrawRequest } from "zk-obs-sdk";
+import { useSignWithdraw } from "../../hooks/useSignWithdraw";
 
 const STYLES = {
 	BLUE: {
@@ -48,7 +50,9 @@ interface Available {
 export default function Profile() {
 	const toast = useToast();
 	const { data: signer } = useSigner();
-	const { tsAccount } = useContext(TsAccountContext);
+	const { tsAccount, addNonce } = useContext(TsAccountContext);
+	const [approvedAmt, setApprovedAmt] = useState("0");
+	const [isApproved, setIsApproved] = useState(true);
 	const [isLoading, setIsLoading] = useState({
 		approve: false,
 		deposit: false,
@@ -64,16 +68,32 @@ export default function Profile() {
 		testUSD: "0",
 	});
 	const [depositInfo, setDepositInfo] = useState({
-		token: TokenLabel.goerliETH,
+		token: TsTokenAddress.WETH,
 		amount: "0",
 	});
-	const [withdrawInfo, setWithdrawInfo] = useState({
-		token: TokenLabel.goerliETH,
-		amount: "0",
+	const [withdrawInfo, setWithdrawInfo] = useState<TsTxWithdrawRequest>({
+		reqType: TsTxType.WITHDRAW,
+		sender: "",
+		tokenId: TsTokenAddress.WETH,
+		stateAmt: "",
+		nonce: "",
+		eddsaSig: {
+			R8: ["", ""],
+			S: "",
+		},
+		ecdsaSig: "",
 	});
-	const [approvedAmt, setApprovedAmt] = useState("0");
-	const [isApproved, setIsApproved] = useState(true);
-
+	const {
+		signature: ecdsaSig,
+		isSuccess,
+		reset,
+		signTypedDataAsync,
+	} = useSignWithdraw(
+		withdrawInfo.sender,
+		withdrawInfo.tokenId,
+		withdrawInfo.stateAmt,
+		withdrawInfo.nonce
+	);
 	const updateBalance = async () => {
 		if (signer) {
 			const ethBalance = await signer.getBalance();
@@ -135,7 +155,7 @@ export default function Profile() {
 				ZK_OBS_CONTRACT_ABI,
 				signer
 			);
-			if (depositInfo.token === TokenLabel.goerliETH) {
+			if (depositInfo.token === TsTokenAddress.WETH) {
 				if (accountId === 0) {
 					try {
 						const res = await contract.registerETH(l2Addr, depositAmt);
@@ -187,7 +207,7 @@ export default function Profile() {
 						});
 					}
 				}
-			} else {
+			} else if (depositInfo.token === TsTokenAddress.USD) {
 				if (accountId === 0) {
 					try {
 						const res = await contract.registerERC20(
@@ -288,20 +308,33 @@ export default function Profile() {
 			}
 	};
 
-	const selectDepositToken = (token: TokenLabel) => {
+	const selectDepositToken = (token: TsTokenAddress) => {
 		setDepositInfo({ ...depositInfo, token });
 	};
 
-	const selectWithdrawToken = (token: TokenLabel) => {
-		setWithdrawInfo({ ...withdrawInfo, token });
+	const selectWithdrawToken = (token: TsTokenAddress) => {
+		if (token === TsTokenAddress.USD) {
+			setWithdrawInfo({ ...withdrawInfo, tokenId: TsTokenAddress.USD });
+		} else if (token === TsTokenAddress.WETH) {
+			setWithdrawInfo({ ...withdrawInfo, tokenId: TsTokenAddress.WETH });
+		}
 	};
 
-	const setDepositAmount = (amount: string) => {
+	const setDepositAmt = (amount: string) => {
 		if (amount === "") {
 			setDepositInfo({ ...depositInfo, amount: "0" });
 		} else {
 			amount = parseEther(amount).toString();
 			setDepositInfo({ ...depositInfo, amount });
+		}
+	};
+
+	const setWithdrawAmt = (amount: string) => {
+		if (amount === "") {
+			setWithdrawInfo({ ...withdrawInfo, stateAmt: "0" });
+		} else {
+			amount = parseEther(amount).toString();
+			setWithdrawInfo({ ...withdrawInfo, stateAmt: amount });
 		}
 	};
 
@@ -318,7 +351,7 @@ export default function Profile() {
 
 	useEffect(() => {
 		if (signer) {
-			if (depositInfo.token === TokenLabel.goerliETH) {
+			if (depositInfo.token === TsTokenAddress.WETH) {
 				setIsApproved(true);
 			} else {
 				if (
@@ -331,6 +364,47 @@ export default function Profile() {
 			}
 		}
 	}, [depositInfo, approvedAmt, signer]);
+
+	const handleWithdraw = async () => {
+		if (signer && tsAccount) {
+			setIsLoading({ ...isLoading, withdraw: true });
+			const req = tsAccount.prepareTxWithdraw(
+				withdrawInfo.sender,
+				withdrawInfo.tokenId,
+				withdrawInfo.stateAmt,
+				withdrawInfo.nonce
+			);
+			setWithdrawInfo({
+				...withdrawInfo,
+				eddsaSig: req.eddsaSig,
+			});
+			try {
+				await signTypedDataAsync();
+			} catch (error) {
+				setIsLoading({ ...isLoading, withdraw: false });
+				console.error(error);
+			}
+		}
+	};
+
+	useEffect(() => {
+		if (isSuccess && ecdsaSig) {
+			setIsLoading({ ...isLoading, withdraw: false });
+			setWithdrawInfo({
+				...withdrawInfo,
+				ecdsaSig,
+			});
+			reset();
+		}
+	}, [isSuccess, ecdsaSig, reset]);
+
+	useEffect(() => {
+		if (withdrawInfo.ecdsaSig !== "") {
+			console.log("withdrawInfo", withdrawInfo);
+			//TODO POST API
+			addNonce();
+		}
+	}, [withdrawInfo]);
 
 	return (
 		<div className={styles.CONTAINER}>
@@ -366,23 +440,23 @@ export default function Profile() {
 					<div>
 						<span
 							style={
-								depositInfo.token == TokenLabel.goerliETH
+								depositInfo.token == TsTokenAddress.WETH
 									? STYLES.BLUE
 									: STYLES.GRAY
 							}
 							className={styles.SPAN}
-							onClick={() => selectDepositToken(TokenLabel.goerliETH)}
+							onClick={() => selectDepositToken(TsTokenAddress.WETH)}
 						>
 							goerliETH
 						</span>
 						<span
 							style={
-								depositInfo.token == TokenLabel.testUSD
+								depositInfo.token == TsTokenAddress.USD
 									? STYLES.BLUE
 									: STYLES.GRAY
 							}
 							className={styles.SPAN}
-							onClick={() => selectDepositToken(TokenLabel.testUSD)}
+							onClick={() => selectDepositToken(TsTokenAddress.USD)}
 						>
 							testUSD
 						</span>
@@ -390,7 +464,7 @@ export default function Profile() {
 							width="300px"
 							border="2px"
 							onChange={(e) => {
-								setDepositAmount(e.target.value);
+								setDepositAmt(e.target.value);
 							}}
 						/>
 					</div>
@@ -418,29 +492,39 @@ export default function Profile() {
 					<div>
 						<span
 							style={
-								withdrawInfo.token == TokenLabel.goerliETH
+								withdrawInfo.tokenId == TsTokenAddress.WETH
 									? STYLES.BLUE
 									: STYLES.GRAY
 							}
 							className={styles.SPAN}
-							onClick={() => selectWithdrawToken(TokenLabel.goerliETH)}
+							onClick={() => selectWithdrawToken(TsTokenAddress.WETH)}
 						>
 							goerliETH
 						</span>
 						<span
 							style={
-								withdrawInfo.token == TokenLabel.testUSD
+								withdrawInfo.tokenId == TsTokenAddress.USD
 									? STYLES.BLUE
 									: STYLES.GRAY
 							}
 							className={styles.SPAN}
-							onClick={() => selectWithdrawToken(TokenLabel.testUSD)}
+							onClick={() => selectWithdrawToken(TsTokenAddress.USD)}
 						>
 							testUSD
 						</span>
-						<Input width="300px" border="2px" />
+						<Input
+							width="300px"
+							border="2px"
+							onChange={(e) => {
+								setWithdrawAmt(e.target.value);
+							}}
+						/>
 					</div>
-					<Button width="150px" colorScheme="blue">
+					<Button
+						width="150px"
+						colorScheme="blue"
+						onClick={() => handleWithdraw()}
+					>
 						Withdraw
 					</Button>
 				</div>
