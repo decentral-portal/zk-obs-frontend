@@ -7,19 +7,21 @@ const STYLES = {
 		flexDirection: "column" as const,
 		justifyContent: "center",
 		alignItems: "center",
-		margin: "1rem auto",
 		width: "80%",
 	},
 	CHART: {
 		width: "100%",
 		height: "50vh",
 		background: "lightgray",
+		padding: "1rem",
+		margin: "1rem auto",
 		borderRadius: "12px",
 	},
 	BAR: {
 		width: "100%",
 		height: "30vh",
 		background: "gray",
+		padding: "1rem",
 		borderRadius: "12px",
 	},
 };

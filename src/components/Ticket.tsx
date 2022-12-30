@@ -9,6 +9,7 @@ const STYLES = {
 		flexDirection: "column" as const,
 		justifyContent: "center",
 		backgroundColor: "lightgray",
+		padding: "1rem",
 		margin: "1rem auto",
 		width: "80%",
 		borderRadius: "12px",

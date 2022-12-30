@@ -25,7 +25,7 @@ export const useSignAuth = () => {
       },
       value: {
         Authentication: 'zkOBS',
-        Action: 'Authenticate on zkOBS',
+        Action: 'Authentication on zkOBS',
       },
     });
   }, []);

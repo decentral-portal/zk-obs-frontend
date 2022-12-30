@@ -19,6 +19,7 @@ const STYLES = {
 		justifyContent: "center",
 		backgroundColor: "lightgray",
 		width: "80%",
+		padding: "1rem",
 		margin: "1rem auto",
 		borderRadius: "12px",
 	},

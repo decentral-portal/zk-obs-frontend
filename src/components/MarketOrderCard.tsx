@@ -1,10 +1,16 @@
-import { InputGroup, Input, Button, InputRightAddon } from "@chakra-ui/react";
-import React, { useContext, useEffect, useState } from "react";
+import {
+	InputGroup,
+	Input,
+	Button,
+	InputRightAddon,
+	Spinner,
+} from "@chakra-ui/react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { TsTokenAddress, TsTxMarketOrderRequest, TsTxType } from "zk-obs-sdk";
-import { MarketType, OrderType } from "../config";
+import { OrderType } from "../config";
 import { TsAccountContext } from "./TsAccountProvider";
 import { useSigner } from "wagmi";
-import { BigNumber } from "ethers";
+import { useSignMarketOrderReq } from "../hooks/useSignMarketOrder";
 
 const STYLES = {
 	CONTAINER: {
@@ -32,9 +38,9 @@ export default function MarketOrderCard(props: OrderCardProps) {
 	const { orderType, tokens } = props;
 	const { data: signer } = useSigner();
 	const { tsAccount, profile, nonce, addNonce } = useContext(TsAccountContext);
-	const [price, setPrice] = useState<string>("");
+	const [isLoading, setIsLoading] = useState<boolean>(false);
 	const [orderInfo, setOrderInfo] = useState<TsTxMarketOrderRequest>({
-		reqType: TsTxType.UNKNOWN,
+		reqType: TsTxType.MARKET_ORDER,
 		sender: "",
 		sellTokenId: TsTokenAddress.UNKNOWN,
 		sellAmt: "",
@@ -46,13 +52,18 @@ export default function MarketOrderCard(props: OrderCardProps) {
 		},
 		ecdsaSig: "",
 	});
-
-	useEffect(() => {
-		setOrderInfo({
-			...orderInfo,
-			reqType: TsTxType.MARKET_ORDER,
-		});
-	}, []);
+	const {
+		signature: ecdsaSig,
+		isSuccess,
+		reset,
+		signTypedDataAsync,
+	} = useSignMarketOrderReq(
+		orderInfo.sender,
+		orderInfo.sellTokenId,
+		orderInfo.sellAmt,
+		orderInfo.nonce,
+		orderInfo.buyTokenId
+	);
 
 	useEffect(() => {
 		if (orderType === OrderType.BUY) {
@@ -61,36 +72,37 @@ export default function MarketOrderCard(props: OrderCardProps) {
 				sellTokenId: TsTokenAddress.USD,
 				buyTokenId: TsTokenAddress.WETH,
 			});
-		} else {
+		} else if (orderType === OrderType.SELL) {
 			setOrderInfo({
 				...orderInfo,
 				sellTokenId: TsTokenAddress.WETH,
 				buyTokenId: TsTokenAddress.USD,
 			});
+		} else {
+			return;
 		}
 	}, []);
 
-	const setAmt = (amount: string) => {
-		if (orderType === OrderType.BUY) {
+	useEffect(() => {
+		if (signer && tsAccount) {
 			setOrderInfo({
 				...orderInfo,
-				sellAmt: amount,
-			});
-		} else {
-			setOrderInfo({
-				...orderInfo,
-				sellAmt: amount,
-			});
-		}
-	};
-
-	const handleOrder = () => {
-		if (signer && profile && tsAccount) {
-			setOrderInfo({
-				...orderInfo,
-				sender: profile.l2Addr,
+				sender: "",
 				nonce: nonce.toString(),
 			});
+		}
+	}, [nonce, signer, tsAccount]);
+
+	const setAmt = (amount: string) => {
+		setOrderInfo({
+			...orderInfo,
+			sellAmt: amount.toString(),
+		});
+	};
+
+	const handleOrder = useCallback(async () => {
+		if (signer && tsAccount) {
+			setIsLoading(true);
 			const req = tsAccount.prepareTxMarketOrder(
 				orderInfo.sender,
 				orderInfo.sellTokenId,
@@ -98,8 +110,38 @@ export default function MarketOrderCard(props: OrderCardProps) {
 				orderInfo.nonce,
 				orderInfo.buyTokenId
 			);
+			console.log("req", req);
+			setOrderInfo({
+				...orderInfo,
+				eddsaSig: req.eddsaSig,
+			});
+			try {
+				await signTypedDataAsync();
+			} catch (error) {
+				setIsLoading(false);
+				console.error(error);
+			}
 		}
-	};
+	}, [signer, tsAccount, signTypedDataAsync]);
+
+	useEffect(() => {
+		if (isSuccess && ecdsaSig) {
+			console.log("orderInfo", orderInfo);
+			setIsLoading(false);
+			setOrderInfo({
+				...orderInfo,
+				ecdsaSig: ecdsaSig,
+			});
+			reset();
+		}
+	}, [isSuccess, ecdsaSig, orderInfo]);
+
+	useEffect(() => {
+		if (orderInfo.ecdsaSig !== "") {
+			console.log("orderInfo", orderInfo);
+			addNonce();
+		}
+	}, [orderInfo]);
 
 	return (
 		<div style={STYLES.CONTAINER}>
@@ -127,8 +169,9 @@ export default function MarketOrderCard(props: OrderCardProps) {
 			<Button
 				colorScheme={getColorScheme(orderType)}
 				onClick={() => handleOrder()}
+				disabled={isLoading}
 			>
-				{orderType}
+				{isLoading ? <Spinner /> : orderType}
 			</Button>
 		</div>
 	);

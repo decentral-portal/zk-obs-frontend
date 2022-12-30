@@ -9,9 +9,8 @@ import {
 	Tr,
 } from "@chakra-ui/react";
 import { formatEther, parseEther } from "ethers/lib/utils.js";
-import { useContractWrite } from "wagmi";
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import { goerli, useSigner } from "wagmi";
+import { useSigner } from "wagmi";
 import { Button, Spinner, useToast } from "@chakra-ui/react";
 import { BigNumber, ethers, utils } from "ethers";
 import TEST_USD_CNOTRACT_ABI from "../../abis/testUSD_abi.json";
@@ -21,12 +20,7 @@ import {
 	TokenLabel,
 	ZK_OBS_CONTRACT_ADDRESS,
 } from "../../config";
-import {
-	fetchAccountId,
-	fetchApprovedAmt,
-	fetchBalance,
-	getRandBytes20,
-} from "../utils";
+import { fetchAccountId, fetchApprovedAmt, fetchBalance } from "../utils";
 import styles from "./Profile.module.css";
 import { TsAccountContext } from "../TsAccountProvider";
 
@@ -405,6 +399,7 @@ export default function Profile() {
 							width="150px"
 							colorScheme="blue"
 							onClick={() => handleDeposit()}
+							disabled={isLoading.deposit}
 						>
 							{isLoading.deposit ? <Spinner /> : "Deposit"}
 						</Button>
@@ -413,6 +408,7 @@ export default function Profile() {
 							width="150px"
 							colorScheme="blue"
 							onClick={() => handleApprove()}
+							disabled={isLoading.approve}
 						>
 							{isLoading.approve ? <Spinner /> : "Approve"}
 						</Button>
@@ -451,7 +447,11 @@ export default function Profile() {
 			</div>
 			<div className={styles.BOX}>
 				<h1 className={styles.H1}>Faucet</h1>
-				<Button colorScheme="blue" onClick={() => mint()}>
+				<Button
+					colorScheme="blue"
+					onClick={() => mint()}
+					disabled={isLoading.mint}
+				>
 					{isLoading.mint ? <Spinner /> : "Mint 1000 testUSD"}
 				</Button>
 			</div>

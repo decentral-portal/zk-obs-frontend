@@ -1,17 +1,17 @@
-import { InputGroup, Input, Button, InputRightAddon } from "@chakra-ui/react";
-import React, { useContext, useEffect, useState } from "react";
 import {
-	TsTokenAddress,
-	TsTxLimitOrderNonSignatureRequest,
-	TsTxLimitOrderRequest,
-	TsTxMarketOrderNonSignatureRequest,
-	TsTxMarketOrderRequest,
-	TsTxType,
-} from "zk-obs-sdk";
-import { MarketType, OrderType } from "../config";
+	InputGroup,
+	Input,
+	Button,
+	InputRightAddon,
+	Spinner,
+} from "@chakra-ui/react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
+import { TsTokenAddress, TsTxLimitOrderRequest, TsTxType } from "zk-obs-sdk";
+import { OrderType } from "../config";
 import { TsAccountContext } from "./TsAccountProvider";
 import { useSigner } from "wagmi";
 import { BigNumber } from "ethers";
+import { useSignLimitOrderReq } from "../hooks/useSignLimitOrder";
 
 const STYLES = {
 	CONTAINER: {
@@ -40,8 +40,9 @@ export default function LimitOrderCard(props: OrderCardProps) {
 	const { data: signer } = useSigner();
 	const { tsAccount, profile, nonce, addNonce } = useContext(TsAccountContext);
 	const [price, setPrice] = useState<string>("");
+	const [isLoading, setIsLoading] = useState<boolean>(false);
 	const [orderInfo, setOrderInfo] = useState<TsTxLimitOrderRequest>({
-		reqType: TsTxType.UNKNOWN,
+		reqType: TsTxType.LIMIT_ORDER,
 		sender: "",
 		sellTokenId: TsTokenAddress.UNKNOWN,
 		sellAmt: "",
@@ -54,13 +55,19 @@ export default function LimitOrderCard(props: OrderCardProps) {
 		},
 		ecdsaSig: "",
 	});
-
-	useEffect(() => {
-		setOrderInfo({
-			...orderInfo,
-			reqType: TsTxType.LIMIT_ORDER,
-		});
-	}, []);
+	const {
+		signature: ecdsaSig,
+		isSuccess,
+		reset,
+		signTypedDataAsync,
+	} = useSignLimitOrderReq(
+		orderInfo.sender,
+		orderInfo.sellTokenId,
+		orderInfo.sellAmt,
+		orderInfo.nonce,
+		orderInfo.buyTokenId,
+		orderInfo.buyAmt
+	);
 
 	useEffect(() => {
 		if (orderType === OrderType.BUY) {
@@ -69,52 +76,34 @@ export default function LimitOrderCard(props: OrderCardProps) {
 				sellTokenId: TsTokenAddress.USD,
 				buyTokenId: TsTokenAddress.WETH,
 			});
-		} else {
+		} else if (orderType === OrderType.SELL) {
 			setOrderInfo({
 				...orderInfo,
 				sellTokenId: TsTokenAddress.WETH,
 				buyTokenId: TsTokenAddress.USD,
 			});
+		} else {
+			return;
 		}
 	}, []);
 
-	const setAmt = (amount: string) => {
-		if (orderType === OrderType.BUY) {
+	useEffect(() => {
+		if (signer && tsAccount) {
 			setOrderInfo({
 				...orderInfo,
-				sellAmt: amount,
-			});
-		} else {
-			setOrderInfo({
-				...orderInfo,
-				sellAmt: amount,
-			});
-		}
-	};
-
-	const handleOrder = () => {
-		if (signer && profile && tsAccount) {
-			setOrderInfo({
-				...orderInfo,
-				sender: profile.l2Addr,
+				sender: "",
 				nonce: nonce.toString(),
 			});
-			const buyAmt = getBuyAmt(price, orderInfo.sellAmt);
-			if (buyAmt !== "") {
-				setOrderInfo({
-					...orderInfo,
-					buyAmt: buyAmt,
-				});
-				const req = tsAccount.prepareTxLimitOrder(
-					orderInfo.sender,
-					orderInfo.sellTokenId,
-					orderInfo.sellAmt,
-					orderInfo.nonce,
-					orderInfo.buyTokenId,
-					orderInfo.buyAmt
-				);
-			}
 		}
+	}, [nonce, signer, tsAccount]);
+
+	const setAmt = (amount: string) => {
+		const buyAmt = getBuyAmt(price, amount);
+		setOrderInfo({
+			...orderInfo,
+			sellAmt: amount.toString(),
+			buyAmt: buyAmt,
+		});
 	};
 
 	const getBuyAmt = (price: string, sellAmt: string): string => {
@@ -124,12 +113,56 @@ export default function LimitOrderCard(props: OrderCardProps) {
 			if (orderType === OrderType.BUY) {
 				const buyAmt = BigNumber.from(sellAmt).div(BigNumber.from(price));
 				return buyAmt.toString();
-			} else {
+			} else if (orderType === OrderType.SELL) {
 				const buyAmt = BigNumber.from(sellAmt).mul(BigNumber.from(price));
 				return buyAmt.toString();
+			} else {
+				return "";
 			}
 		}
 	};
+
+	const handleOrder = useCallback(async () => {
+		if (signer && tsAccount) {
+			setIsLoading(true);
+			const req = tsAccount.prepareTxLimitOrder(
+				orderInfo.sender,
+				orderInfo.sellTokenId,
+				orderInfo.sellAmt,
+				orderInfo.nonce,
+				orderInfo.buyTokenId,
+				orderInfo.buyAmt
+			);
+			setOrderInfo({
+				...orderInfo,
+				eddsaSig: req.eddsaSig,
+			});
+			try {
+				await signTypedDataAsync();
+			} catch (error) {
+				setIsLoading(false);
+				console.error(error);
+			}
+		}
+	}, [signer, tsAccount, signTypedDataAsync]);
+
+	useEffect(() => {
+		if (isSuccess && ecdsaSig) {
+			setIsLoading(false);
+			setOrderInfo({
+				...orderInfo,
+				ecdsaSig: ecdsaSig,
+			});
+			reset();
+		}
+	}, [isSuccess, ecdsaSig, orderInfo]);
+
+	useEffect(() => {
+		if (orderInfo.ecdsaSig !== "") {
+			console.log("orderInfo", orderInfo);
+			addNonce();
+		}
+	}, [orderInfo]);
 
 	return (
 		<div style={STYLES.CONTAINER}>
@@ -153,18 +186,17 @@ export default function LimitOrderCard(props: OrderCardProps) {
 						setAmt(e.target.value);
 					}}
 				/>
-				{orderType === OrderType.BUY ? (
-					<InputRightAddon>{tokens.tokenB}</InputRightAddon>
-				) : (
-					<InputRightAddon>{tokens.tokenA}</InputRightAddon>
-				)}
+				<InputRightAddon>
+					{orderType === OrderType.BUY ? tokens.tokenB : tokens.tokenA}
+				</InputRightAddon>
 			</InputGroup>
 			<br />
 			<Button
 				colorScheme={getColorScheme(orderType)}
 				onClick={() => handleOrder()}
+				disabled={isLoading}
 			>
-				{orderType}
+				{isLoading ? <Spinner /> : orderType}
 			</Button>
 		</div>
 	);

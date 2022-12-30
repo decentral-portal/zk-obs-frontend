@@ -75,18 +75,16 @@ export const TsAccountProvider = ({ children }: { children: any }) => {
 	}, []);
 
 	const authUser = useCallback(async () => {
-		if (isConnected) {
-			try {
-				const sig = await signAuth();
-				if (sig) {
-					setTsAccount(sig);
-					setIsAuthenticated(true);
-				}
-			} catch (error) {
-				console.log("error", error);
+		try {
+			const sig = await signAuth();
+			if (sig) {
+				setTsAccount(sig);
+				setIsAuthenticated(true);
 			}
+		} catch (error) {
+			console.log("error", error);
 		}
-	}, [setTsAccount, isConnected, signAuth]);
+	}, [setTsAccount, signAuth]);
 
 	const addNonce = useCallback(() => {
 		if (nonce !== 0) {
@@ -154,7 +152,7 @@ export const TsAccountProvider = ({ children }: { children: any }) => {
 			authUser();
 			fetchTsAccount();
 		}
-	}, [isConnected, address, chain, authUser, fetchTsAccount, isAuthenticated]);
+	}, [isConnected, chain, authUser, fetchTsAccount, isAuthenticated]);
 
 	return (
 		<TsAccountContext.Provider
