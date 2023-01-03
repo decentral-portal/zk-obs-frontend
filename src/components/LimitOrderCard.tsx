@@ -5,13 +5,15 @@ import {
 	InputRightAddon,
 	Spinner,
 } from "@chakra-ui/react";
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { TsTokenAddress, TsTxLimitOrderRequest, TsTxType } from "zk-obs-sdk";
-import { OrderType } from "../config";
+import { Available, OrderType } from "../config";
 import { TsAccountContext } from "./TsAccountProvider";
 import { useSigner } from "wagmi";
 import { BigNumber, utils } from "ethers";
 import { useSignLimitOrderReq } from "../hooks/useSignLimitOrder";
+import axios from "axios";
+import { ZK_OBS_API_BASE_URL } from "../config";
 
 const STYLES = {
 	CONTAINER: {
@@ -38,9 +40,14 @@ interface OrderCardProps {
 export default function LimitOrderCard(props: OrderCardProps) {
 	const { orderType, tokens } = props;
 	const { data: signer } = useSigner();
-	const { tsAccount, profile, nonce, addNonce } = useContext(TsAccountContext);
+	const { tsAccount, profile, nonce, addNonce, fetchTsAccount } =
+		useContext(TsAccountContext);
 	const [price, setPrice] = useState<string>("");
 	const [isLoading, setIsLoading] = useState<boolean>(false);
+	const [available, setAvailable] = useState<Available>({
+		goerliETH: "0",
+		testUSD: "0",
+	});
 	const [orderInfo, setOrderInfo] = useState<TsTxLimitOrderRequest>({
 		reqType: TsTxType.LIMIT_ORDER,
 		sender: "",
@@ -88,14 +95,18 @@ export default function LimitOrderCard(props: OrderCardProps) {
 	}, []);
 
 	useEffect(() => {
-		if (signer && tsAccount) {
+		if (signer && tsAccount && profile) {
 			setOrderInfo({
 				...orderInfo,
-				sender: "",
+				sender: profile.accountId,
 				nonce: nonce.toString(),
 			});
+			setAvailable({
+				goerliETH: profile.tokenLeafs[0].amount || "0",
+				testUSD: profile.tokenLeafs[1].amount || "0",
+			});
 		}
-	}, [nonce, signer, tsAccount]);
+	}, [nonce, signer, tsAccount, profile]);
 
 	const setAmt = (amount: string) => {
 		const buyAmt = getBuyAmt(price, amount);
@@ -123,7 +134,7 @@ export default function LimitOrderCard(props: OrderCardProps) {
 	};
 
 	const handleOrder = async () => {
-		if (signer && tsAccount) {
+		if (signer && tsAccount && profile) {
 			setIsLoading(true);
 			const req = tsAccount.prepareTxLimitOrder(
 				orderInfo.sender,
@@ -138,7 +149,7 @@ export default function LimitOrderCard(props: OrderCardProps) {
 				eddsaSig: req.eddsaSig,
 			});
 			try {
-				await signTypedDataAsync();
+				const res = await signTypedDataAsync();
 			} catch (error) {
 				setIsLoading(false);
 				console.error(error);
@@ -160,9 +171,30 @@ export default function LimitOrderCard(props: OrderCardProps) {
 	useEffect(() => {
 		if (orderInfo.ecdsaSig !== "") {
 			console.log("orderInfo", orderInfo);
-			addNonce();
+			const url = `${ZK_OBS_API_BASE_URL}/v1/ts/transaction/placeOrder`;
+			try {
+				const res = placeOrder(url, orderInfo).then((res) => {
+					setOrderInfo({
+						...orderInfo,
+						ecdsaSig: "",
+					});
+					fetchTsAccount();
+					addNonce();
+				});
+			} catch (error) {
+				console.error(error);
+			}
 		}
-	}, [orderInfo]);
+	}, [addNonce, orderInfo]);
+
+	const placeOrder = async (url: string, orderInfo: TsTxLimitOrderRequest) => {
+		try {
+			const res = await axios.post(url, orderInfo);
+			return res;
+		} catch (error) {
+			console.error(error);
+		}
+	};
 
 	return (
 		<div style={STYLES.CONTAINER}>
@@ -177,7 +209,12 @@ export default function LimitOrderCard(props: OrderCardProps) {
 				<InputRightAddon>{tokens.tokenB}</InputRightAddon>
 			</InputGroup>
 			<br />
-			<span style={STYLES.SPAN}>Available: </span>
+			<span style={STYLES.SPAN}>
+				Available:&nbsp;
+				{orderType == OrderType.BUY
+					? Number(utils.formatEther(available.goerliETH)).toFixed(4)
+					: Number(utils.formatEther(available.testUSD)).toFixed(4)}
+			</span>
 			<InputGroup>
 				<Input
 					type="amt"

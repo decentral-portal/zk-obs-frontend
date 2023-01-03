@@ -1,5 +1,7 @@
 import React from "react";
 import Chart from "./Chart";
+import banner from "../assets/banner.png";
+import { Image } from "@chakra-ui/react";
 
 const STYLES = {
 	CONTAINER: {
@@ -28,8 +30,9 @@ const STYLES = {
 export default function Trading() {
 	return (
 		<div style={STYLES.CONTAINER}>
-			<div style={STYLES.CHART}>{/* <Chart /> */}</div>
-			<div style={STYLES.BAR}></div>
+			<Image src={banner.src} alt="banner" />
+			{/* <div style={STYLES.CHART}></div> */}
+			{/* <div style={STYLES.BAR}></div> */}
 		</div>
 	);
 }

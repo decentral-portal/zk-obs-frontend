@@ -16,8 +16,9 @@ import { BigNumber, ethers, utils } from "ethers";
 import TEST_USD_CNOTRACT_ABI from "../../abis/testUSD_abi.json";
 import ZK_OBS_CONTRACT_ABI from "../../abis/zkOBS_abi.json";
 import {
+	Available,
+	Balance,
 	TEST_USD_CONTRACT_ADDR,
-	TokenLabel,
 	ZK_OBS_CONTRACT_ADDRESS,
 } from "../../config";
 import { fetchAccountId, fetchApprovedAmt, fetchBalance } from "../utils";
@@ -36,16 +37,6 @@ const STYLES = {
 		cursor: "pointer",
 	},
 };
-
-interface Balance {
-	goerliETH: string;
-	testUSD: string;
-}
-
-interface Available {
-	goerliETH: string;
-	testUSD: string;
-}
 
 export default function Profile() {
 	const toast = useToast();
@@ -99,33 +90,62 @@ export default function Profile() {
 			const ethBalance = await signer.getBalance();
 			const testUSDBalance = await fetchBalance(TEST_USD_CONTRACT_ADDR, signer);
 			setBalance({
-				goerliETH: utils.formatEther(ethBalance).slice(0, 6),
-				testUSD: utils.formatEther(testUSDBalance).slice(0, 6),
+				goerliETH: Number(utils.formatEther(ethBalance)).toFixed(4),
+				testUSD: Number(utils.formatEther(testUSDBalance)).toFixed(4),
 			});
 		}
 	};
 
-	useEffect(() => {
-		updateBalance();
-	}, [signer]);
+	const selectDepositToken = (token: TsTokenAddress) => {
+		setDepositInfo({ ...depositInfo, token });
+	};
 
-	const mint = async () => {
+	const selectWithdrawToken = (token: TsTokenAddress) => {
+		if (token === TsTokenAddress.USD) {
+			setWithdrawInfo({ ...withdrawInfo, tokenId: TsTokenAddress.USD });
+		} else if (token === TsTokenAddress.WETH) {
+			setWithdrawInfo({ ...withdrawInfo, tokenId: TsTokenAddress.WETH });
+		}
+	};
+
+	const setDepositAmt = (amount: string) => {
+		if (amount === "") {
+			setDepositInfo({ ...depositInfo, amount: "0" });
+		} else {
+			amount = parseEther(amount).toString();
+			setDepositInfo({ ...depositInfo, amount });
+		}
+	};
+
+	const setWithdrawAmt = (amount: string) => {
+		if (amount === "") {
+			setWithdrawInfo({ ...withdrawInfo, stateAmt: "0" });
+		} else {
+			amount = parseEther(amount).toString();
+			setWithdrawInfo({ ...withdrawInfo, stateAmt: amount });
+		}
+	};
+
+	const handleApprove = async () => {
 		if (signer)
 			try {
-				setIsLoading({ ...isLoading, mint: true });
+				setIsLoading({ ...isLoading, approve: true });
 				const contract = new ethers.Contract(
 					TEST_USD_CONTRACT_ADDR,
 					TEST_USD_CNOTRACT_ABI,
 					signer
 				);
-				const mintAmt = utils.parseUnits("1000", 18);
-				const res = await contract.mint(mintAmt);
+				const res = await contract.approve(
+					ZK_OBS_CONTRACT_ADDRESS,
+					ethers.constants.MaxUint256
+				);
 				const txReceipt = await res.wait();
 				updateBalance();
+				setIsApproved(true);
 				if (txReceipt.transactionHash) {
-					setIsLoading({ ...isLoading, mint: false });
+					setIsLoading({ ...isLoading, approve: false });
 					toast({
-						title: "Minted 1000 testUSD",
+						title: "Approved testUSD",
 						status: "success",
 						position: "top",
 						duration: 5000,
@@ -133,9 +153,9 @@ export default function Profile() {
 					});
 				}
 			} catch (error) {
-				setIsLoading({ ...isLoading, mint: false });
+				setIsLoading({ ...isLoading, approve: false });
 				toast({
-					title: "Error minting testUSD",
+					title: "Error approving testUSD",
 					status: "error",
 					position: "top",
 					duration: 5000,
@@ -148,6 +168,7 @@ export default function Profile() {
 		if (signer && tsAccount) {
 			const accountId = await fetchAccountId(signer);
 			setIsLoading({ ...isLoading, deposit: true });
+			const tsPubKey = tsAccount.tsPubKey;
 			const l2Addr = tsAccount.tsAddr;
 			const depositAmt = depositInfo.amount;
 			const contract = new ethers.Contract(
@@ -158,7 +179,11 @@ export default function Profile() {
 			if (depositInfo.token === TsTokenAddress.WETH) {
 				if (accountId === 0) {
 					try {
-						const res = await contract.registerETH(l2Addr, depositAmt);
+						const res = await contract.registerETH(
+							tsPubKey[0].toString(),
+							tsPubKey[1].toString(),
+							depositAmt
+						);
 						const txReceipt = await res.wait();
 						updateBalance();
 						if (txReceipt.transactionHash) {
@@ -211,7 +236,8 @@ export default function Profile() {
 				if (accountId === 0) {
 					try {
 						const res = await contract.registerERC20(
-							l2Addr,
+							tsPubKey[0].toString(),
+							tsPubKey[1].toString(),
 							TEST_USD_CONTRACT_ADDR,
 							depositAmt
 						);
@@ -270,101 +296,6 @@ export default function Profile() {
 		}
 	};
 
-	const handleApprove = async () => {
-		if (signer)
-			try {
-				setIsLoading({ ...isLoading, approve: true });
-				const contract = new ethers.Contract(
-					TEST_USD_CONTRACT_ADDR,
-					TEST_USD_CNOTRACT_ABI,
-					signer
-				);
-				const res = await contract.approve(
-					ZK_OBS_CONTRACT_ADDRESS,
-					ethers.constants.MaxUint256
-				);
-				const txReceipt = await res.wait();
-				updateBalance();
-				setIsApproved(true);
-				if (txReceipt.transactionHash) {
-					setIsLoading({ ...isLoading, approve: false });
-					toast({
-						title: "Approved testUSD",
-						status: "success",
-						position: "top",
-						duration: 5000,
-						isClosable: true,
-					});
-				}
-			} catch (error) {
-				setIsLoading({ ...isLoading, approve: false });
-				toast({
-					title: "Error approving testUSD",
-					status: "error",
-					position: "top",
-					duration: 5000,
-					isClosable: true,
-				});
-			}
-	};
-
-	const selectDepositToken = (token: TsTokenAddress) => {
-		setDepositInfo({ ...depositInfo, token });
-	};
-
-	const selectWithdrawToken = (token: TsTokenAddress) => {
-		if (token === TsTokenAddress.USD) {
-			setWithdrawInfo({ ...withdrawInfo, tokenId: TsTokenAddress.USD });
-		} else if (token === TsTokenAddress.WETH) {
-			setWithdrawInfo({ ...withdrawInfo, tokenId: TsTokenAddress.WETH });
-		}
-	};
-
-	const setDepositAmt = (amount: string) => {
-		if (amount === "") {
-			setDepositInfo({ ...depositInfo, amount: "0" });
-		} else {
-			amount = parseEther(amount).toString();
-			setDepositInfo({ ...depositInfo, amount });
-		}
-	};
-
-	const setWithdrawAmt = (amount: string) => {
-		if (amount === "") {
-			setWithdrawInfo({ ...withdrawInfo, stateAmt: "0" });
-		} else {
-			amount = parseEther(amount).toString();
-			setWithdrawInfo({ ...withdrawInfo, stateAmt: amount });
-		}
-	};
-
-	useMemo(async () => {
-		if (signer) {
-			const approvedAmt = await fetchApprovedAmt(
-				TEST_USD_CONTRACT_ADDR,
-				ZK_OBS_CONTRACT_ADDRESS,
-				signer
-			);
-			setApprovedAmt(approvedAmt);
-		}
-	}, [signer]);
-
-	useEffect(() => {
-		if (signer) {
-			if (depositInfo.token === TsTokenAddress.WETH) {
-				setIsApproved(true);
-			} else {
-				if (
-					BigNumber.from(approvedAmt).gte(BigNumber.from(depositInfo.amount))
-				) {
-					setIsApproved(true);
-				} else {
-					setIsApproved(false);
-				}
-			}
-		}
-	}, [depositInfo, approvedAmt, signer]);
-
 	const handleWithdraw = async () => {
 		if (signer && tsAccount) {
 			setIsLoading({ ...isLoading, withdraw: true });
@@ -387,6 +318,76 @@ export default function Profile() {
 		}
 	};
 
+	const mint = async () => {
+		if (signer)
+			try {
+				setIsLoading({ ...isLoading, mint: true });
+				const contract = new ethers.Contract(
+					TEST_USD_CONTRACT_ADDR,
+					TEST_USD_CNOTRACT_ABI,
+					signer
+				);
+				const mintAmt = utils.parseUnits("1000", 18);
+				const res = await contract.mint(mintAmt);
+				const txReceipt = await res.wait();
+				updateBalance();
+				if (txReceipt.transactionHash) {
+					setIsLoading({ ...isLoading, mint: false });
+					toast({
+						title: "Minted 1000 testUSD",
+						status: "success",
+						position: "top",
+						duration: 5000,
+						isClosable: true,
+					});
+				}
+			} catch (error) {
+				setIsLoading({ ...isLoading, mint: false });
+				toast({
+					title: "Error minting testUSD",
+					status: "error",
+					position: "top",
+					duration: 5000,
+					isClosable: true,
+				});
+			}
+	};
+
+	// approve amount Info
+	useMemo(async () => {
+		if (signer) {
+			const approvedAmt = await fetchApprovedAmt(
+				TEST_USD_CONTRACT_ADDR,
+				ZK_OBS_CONTRACT_ADDRESS,
+				signer
+			);
+			setApprovedAmt(approvedAmt);
+		}
+	}, [signer]);
+
+	// balance Info
+	useEffect(() => {
+		updateBalance();
+	}, [signer]);
+
+	// approve Info
+	useEffect(() => {
+		if (signer) {
+			if (depositInfo.token === TsTokenAddress.WETH) {
+				setIsApproved(true);
+			} else {
+				if (
+					BigNumber.from(approvedAmt).gte(BigNumber.from(depositInfo.amount))
+				) {
+					setIsApproved(true);
+				} else {
+					setIsApproved(false);
+				}
+			}
+		}
+	}, [depositInfo, approvedAmt, signer]);
+
+	// withdraw Info
 	useEffect(() => {
 		if (isSuccess && ecdsaSig) {
 			setIsLoading({ ...isLoading, withdraw: false });
@@ -398,6 +399,7 @@ export default function Profile() {
 		}
 	}, [isSuccess, ecdsaSig, reset]);
 
+	// Withdraw Request
 	useEffect(() => {
 		if (withdrawInfo.ecdsaSig !== "") {
 			console.log("withdrawInfo", withdrawInfo);

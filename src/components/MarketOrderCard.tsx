@@ -5,13 +5,14 @@ import {
 	InputRightAddon,
 	Spinner,
 } from "@chakra-ui/react";
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { TsTokenAddress, TsTxMarketOrderRequest, TsTxType } from "zk-obs-sdk";
-import { OrderType } from "../config";
+import { Available, OrderType, ZK_OBS_API_BASE_URL } from "../config";
 import { TsAccountContext } from "./TsAccountProvider";
 import { useSigner } from "wagmi";
 import { useSignMarketOrderReq } from "../hooks/useSignMarketOrder";
 import { utils } from "ethers";
+import axios from "axios";
 
 const STYLES = {
 	CONTAINER: {
@@ -40,6 +41,10 @@ export default function MarketOrderCard(props: OrderCardProps) {
 	const { data: signer } = useSigner();
 	const { tsAccount, profile, nonce, addNonce } = useContext(TsAccountContext);
 	const [isLoading, setIsLoading] = useState<boolean>(false);
+	const [available, setAvailable] = useState<Available>({
+		goerliETH: "0",
+		testUSD: "0",
+	});
 	const [orderInfo, setOrderInfo] = useState<TsTxMarketOrderRequest>({
 		reqType: TsTxType.MARKET_ORDER,
 		sender: "",
@@ -85,11 +90,15 @@ export default function MarketOrderCard(props: OrderCardProps) {
 	}, []);
 
 	useEffect(() => {
-		if (signer && tsAccount) {
+		if (signer && tsAccount && profile) {
 			setOrderInfo({
 				...orderInfo,
-				sender: "",
+				sender: profile.accountId,
 				nonce: nonce.toString(),
+			});
+			setAvailable({
+				goerliETH: profile.tokenLeafs[0]?.amount || "0",
+				testUSD: profile.tokenLeafs[1]?.amount || "0",
 			});
 		}
 	}, [nonce, signer, tsAccount]);
@@ -102,7 +111,7 @@ export default function MarketOrderCard(props: OrderCardProps) {
 	};
 
 	const handleOrder = async () => {
-		if (signer && tsAccount) {
+		if (signer && tsAccount && profile) {
 			setIsLoading(true);
 			const req = tsAccount.prepareTxMarketOrder(
 				orderInfo.sender,
@@ -111,13 +120,12 @@ export default function MarketOrderCard(props: OrderCardProps) {
 				orderInfo.nonce,
 				orderInfo.buyTokenId
 			);
-			console.log("req", req);
 			setOrderInfo({
 				...orderInfo,
 				eddsaSig: req.eddsaSig,
 			});
 			try {
-				await signTypedDataAsync();
+				const res = await signTypedDataAsync();
 			} catch (error) {
 				setIsLoading(false);
 				console.error(error);
@@ -127,7 +135,6 @@ export default function MarketOrderCard(props: OrderCardProps) {
 
 	useEffect(() => {
 		if (isSuccess && ecdsaSig) {
-			console.log("orderInfo", orderInfo);
 			setIsLoading(false);
 			setOrderInfo({
 				...orderInfo,
@@ -140,9 +147,29 @@ export default function MarketOrderCard(props: OrderCardProps) {
 	useEffect(() => {
 		if (orderInfo.ecdsaSig !== "") {
 			console.log("orderInfo", orderInfo);
+			const url = `${ZK_OBS_API_BASE_URL}/v1/ts/transaction/placeOrder`;
+			try {
+				const res = placeOrder(url, orderInfo);
+				console.log("res", res);
+				setOrderInfo({
+					...orderInfo,
+					ecdsaSig: "",
+				});
+			} catch (error) {
+				console.error(error);
+			}
 			addNonce();
 		}
-	}, [orderInfo]);
+	}, [addNonce, orderInfo]);
+
+	const placeOrder = async (url: string, orderInfo: TsTxMarketOrderRequest) => {
+		try {
+			const res = await axios.post(url, orderInfo);
+			return res;
+		} catch (error) {
+			console.error(error);
+		}
+	};
 
 	return (
 		<div style={STYLES.CONTAINER}>
@@ -151,7 +178,12 @@ export default function MarketOrderCard(props: OrderCardProps) {
 				<InputRightAddon>{tokens.tokenB}</InputRightAddon>
 			</InputGroup>
 			<br />
-			<span style={STYLES.SPAN}>Available: </span>
+			<span style={STYLES.SPAN}>
+				Available:&nbsp;
+				{orderType == OrderType.BUY
+					? utils.formatEther(available.testUSD)
+					: utils.formatEther(available.goerliETH)}
+			</span>
 			<InputGroup>
 				<Input
 					type="amt"

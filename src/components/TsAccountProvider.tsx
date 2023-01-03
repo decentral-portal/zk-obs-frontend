@@ -15,11 +15,16 @@ import {
 	useConnect,
 } from "wagmi";
 import { InjectedConnector } from "wagmi/connectors/injected";
-import { PRIV_HASH_ITERATIONS, VALID_CHAIN } from "../config";
+import {
+	PRIV_HASH_ITERATIONS,
+	VALID_CHAIN,
+	ZK_OBS_API_BASE_URL,
+} from "../config";
 import { useSignAuth } from "../hooks/useSignAuth";
 import { shortenAddress } from "./utils";
 import { TsRollupSigner } from "zk-obs-sdk";
 import { Toast } from "@chakra-ui/react";
+import axios from "axios";
 
 export const TsAccountContext = createContext<{
 	tsAccount: TsRollupSigner | undefined;
@@ -92,25 +97,30 @@ export const TsAccountProvider = ({ children }: { children: any }) => {
 		}
 	}, [nonce]);
 
-	const fetchTsAccount = useCallback(async () => {
-		// if (isConnected) {
-		//   try {
-		//     const profile = await AccountService.tsAccountControllerGetAccountInfo(address);
-		//     if (profile) {
-		//       setProfile(profile);
-		//       const n = Number(profile.nonce);
-		//       if (n > nonce) {
-		//         setNonce(n);
-		//       }
-		//     } else {
-		//       setProfile(undefined);
-		//     }
-		//   } catch (error) {
-		//     console.error(error);
-		//     setProfile(undefined);
-		//   }
-		// }
-	}, [isConnected, address, nonce]);
+	const fetchTsAccount = async () => {
+		if (isConnected) {
+			const url = `${ZK_OBS_API_BASE_URL}/v1/ts/account/profile`;
+			try {
+				const res = await axios.get(url, {
+					params: {
+						address,
+					},
+				});
+				if (res.data) {
+					setProfile(res.data);
+					const n = Number(res.data.nonce);
+					if (n > nonce) {
+						setNonce(n);
+					}
+				} else {
+					setProfile(undefined);
+				}
+			} catch (error) {
+				console.error(error);
+				setProfile(undefined);
+			}
+		}
+	};
 
 	const breakTsAccount = useCallback(() => {
 		setTsAccount(undefined);
@@ -152,7 +162,7 @@ export const TsAccountProvider = ({ children }: { children: any }) => {
 			authUser();
 			fetchTsAccount();
 		}
-	}, [isConnected, chain, authUser, fetchTsAccount, isAuthenticated]);
+	}, [isConnected, chain, authUser, isAuthenticated]);
 
 	return (
 		<TsAccountContext.Provider

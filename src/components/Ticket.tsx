@@ -17,8 +17,8 @@ const STYLES = {
 };
 
 const TOKENS = {
-	tokenA: "goerliETH",
-	tokenB: "testUSD",
+	tokenA: "ETH",
+	tokenB: "USDC",
 };
 
 export default function Ticket() {

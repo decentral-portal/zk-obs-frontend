@@ -7,13 +7,36 @@
         "type": "address"
       },
       {
+        "internalType": "address",
+        "name": "verifierAddr_",
+        "type": "address"
+      },
+      {
         "internalType": "bytes32",
         "name": "genesisStateRoot",
         "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "poseidon2Addr_",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
     "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint32",
+        "name": "blockNumber",
+        "type": "uint32"
+      }
+    ],
+    "name": "BlockCommitted",
+    "type": "event"
   },
   {
     "anonymous": false,
@@ -110,6 +133,18 @@
         "internalType": "uint32",
         "name": "accountId",
         "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "tsPubX",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "tsPubY",
+        "type": "uint256"
       },
       {
         "indexed": false,
@@ -246,6 +281,114 @@
   {
     "inputs": [
       {
+        "components": [
+          {
+            "internalType": "uint32",
+            "name": "blockNumber",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "stateRoot",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "l1RequestNum",
+            "type": "uint64"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "pendingRollupTxHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "commitment",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ZkOBS.StoredBlock",
+        "name": "lastCommittedBlock",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint32",
+            "name": "blockNumber",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "newStateRoot",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "newTsRoot",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes",
+            "name": "publicData",
+            "type": "bytes"
+          },
+          {
+            "internalType": "uint32[]",
+            "name": "publicDataOffsets",
+            "type": "uint32[]"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ZkOBS.CommitBlock[]",
+        "name": "newBlocks",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "commitBlocks",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "committedBlockNum",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "committedL1RequestNum",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "tokenAddr",
         "type": "address"
@@ -266,6 +409,19 @@
     "name": "depositETH",
     "outputs": [],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "executedBlockNum",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -334,9 +490,99 @@
   {
     "inputs": [
       {
-        "internalType": "bytes20",
-        "name": "l2Addr",
-        "type": "bytes20"
+        "components": [
+          {
+            "internalType": "uint32",
+            "name": "blockNumber",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "stateRoot",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "l1RequestNum",
+            "type": "uint64"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "pendingRollupTxHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "commitment",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ZkOBS.StoredBlock[]",
+        "name": "committedBlocks",
+        "type": "tuple[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256[2]",
+            "name": "a",
+            "type": "uint256[2]"
+          },
+          {
+            "internalType": "uint256[2][2]",
+            "name": "b",
+            "type": "uint256[2][2]"
+          },
+          {
+            "internalType": "uint256[2]",
+            "name": "c",
+            "type": "uint256[2]"
+          },
+          {
+            "internalType": "uint256[1]",
+            "name": "commitment",
+            "type": "uint256[1]"
+          }
+        ],
+        "internalType": "struct ZkOBS.Proof[]",
+        "name": "proof",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "proveBlocks",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "provedBlockNum",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tsPubX",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tsPubY",
+        "type": "uint256"
       },
       {
         "internalType": "address",
@@ -357,9 +603,14 @@
   {
     "inputs": [
       {
-        "internalType": "bytes20",
-        "name": "l2Addr",
-        "type": "bytes20"
+        "internalType": "uint256",
+        "name": "tsPubX",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tsPubY",
+        "type": "uint256"
       }
     ],
     "name": "registerETH",
@@ -436,6 +687,19 @@
     "name": "transferOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "verifierAddr",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
