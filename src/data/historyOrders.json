@@ -2,7 +2,7 @@
   {
     "txId": "1",
     "date": "2022-01-01 00:00:00",
-    "pair": "goerliETH/testUSD",
+    "pair": "ETH/USDC",
     "type": "limited",
     "orderType": "buy",
     "price": "1200",
@@ -12,7 +12,7 @@
   {
     "txId": "2",
     "date": "2022-01-01 00:00:00",
-    "pair": "goerliETH/testUSD",
+    "pair": "ETH/USDC",
     "type": "limited",
     "orderType": "sell",
     "price": "1200",
@@ -22,7 +22,7 @@
   {
     "txId": "3",
     "date": "2022-01-01 00:00:00",
-    "pair": "goerliETH/testUSD",
+    "pair": "ETH/USDC",
     "type": "market",
     "orderType": "buy",
     "price": "1200",
@@ -32,7 +32,7 @@
   {
     "txId": "4",
     "date": "2022-01-01 00:00:00",
-    "pair": "goerliETH/testUSD",
+    "pair": "ETH/USDC",
     "type": "market",
     "orderType": "sell",
     "price": "1200",

@@ -423,12 +423,12 @@ export default function Profile() {
 						</Thead>
 						<Tbody>
 							<Tr>
-								<Td>goerliETH</Td>
+								<Td>ETH</Td>
 								<Td>{balance.goerliETH}</Td>
 								<Td>{available.goerliETH}</Td>
 							</Tr>
 							<Tr>
-								<Td>testUSD</Td>
+								<Td>USDC</Td>
 								<Td>{balance.testUSD}</Td>
 								<Td>{available.testUSD}</Td>
 							</Tr>
@@ -449,7 +449,7 @@ export default function Profile() {
 							className={styles.SPAN}
 							onClick={() => selectDepositToken(TsTokenAddress.WETH)}
 						>
-							goerliETH
+							ETH
 						</span>
 						<span
 							style={
@@ -460,7 +460,7 @@ export default function Profile() {
 							className={styles.SPAN}
 							onClick={() => selectDepositToken(TsTokenAddress.USD)}
 						>
-							testUSD
+							USDC
 						</span>
 						<Input
 							width="300px"
@@ -501,7 +501,7 @@ export default function Profile() {
 							className={styles.SPAN}
 							onClick={() => selectWithdrawToken(TsTokenAddress.WETH)}
 						>
-							goerliETH
+							ETH
 						</span>
 						<span
 							style={
@@ -512,7 +512,7 @@ export default function Profile() {
 							className={styles.SPAN}
 							onClick={() => selectWithdrawToken(TsTokenAddress.USD)}
 						>
-							testUSD
+							USDC
 						</span>
 						<Input
 							width="300px"
@@ -538,7 +538,7 @@ export default function Profile() {
 					onClick={() => mint()}
 					disabled={isLoading.mint}
 				>
-					{isLoading.mint ? <Spinner /> : "Mint 1000 testUSD"}
+					{isLoading.mint ? <Spinner /> : "Mint 1000 USDC"}
 				</Button>
 			</div>
 		</div>
