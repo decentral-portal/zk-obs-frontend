@@ -14,6 +14,7 @@ import { BigNumber, utils } from "ethers";
 import { useSignLimitOrderReq } from "../hooks/useSignLimitOrder";
 import axios from "axios";
 import { ZK_OBS_API_BASE_URL } from "../config";
+import { tokenFilter } from "./utils";
 
 const STYLES = {
 	CONTAINER: {
@@ -101,9 +102,14 @@ export default function LimitOrderCard(props: OrderCardProps) {
 				sender: profile.accountId,
 				nonce: nonce.toString(),
 			});
+			const ethLeaf = tokenFilter(profile.tokenLeafs, TsTokenAddress.WETH);
+			const ethAmt = ethLeaf[0]?.amount || "0";
+			const usdLeaf = tokenFilter(profile.tokenLeafs, TsTokenAddress.USD);
+			const usdAmt = usdLeaf[0]?.amount || "0";
+
 			setAvailable({
-				goerliETH: profile.tokenLeafs[0].amount || "0",
-				testUSD: profile.tokenLeafs[1].amount || "0",
+				goerliETH: ethAmt,
+				testUSD: usdAmt,
 			});
 		}
 	}, [nonce, signer, tsAccount, profile]);
@@ -212,8 +218,8 @@ export default function LimitOrderCard(props: OrderCardProps) {
 			<span style={STYLES.SPAN}>
 				Available:&nbsp;
 				{orderType == OrderType.BUY
-					? Number(utils.formatEther(available.goerliETH)).toFixed(4)
-					: Number(utils.formatEther(available.testUSD)).toFixed(4)}
+					? Number(utils.formatEther(available.testUSD)).toFixed(4)
+					: Number(utils.formatEther(available.goerliETH)).toFixed(4)}
 			</span>
 			<InputGroup>
 				<Input

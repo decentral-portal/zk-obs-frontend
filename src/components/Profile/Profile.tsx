@@ -9,7 +9,7 @@ import {
 	Tr,
 } from "@chakra-ui/react";
 import { formatEther, parseEther } from "ethers/lib/utils.js";
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { useSigner } from "wagmi";
 import { Button, Spinner, useToast } from "@chakra-ui/react";
 import { BigNumber, ethers, utils } from "ethers";
@@ -22,7 +22,12 @@ import {
 	ZK_OBS_API_BASE_URL,
 	ZK_OBS_CONTRACT_ADDRESS,
 } from "../../config";
-import { fetchAccountId, fetchApprovedAmt, fetchBalance } from "../utils";
+import {
+	fetchAccountId,
+	fetchApprovedAmt,
+	fetchBalance,
+	tokenFilter,
+} from "../utils";
 import styles from "./Profile.module.css";
 import { TsAccountContext } from "../TsAccountProvider";
 import { TsTokenAddress, TsTxType, TsTxWithdrawRequest } from "zk-obs-sdk";
@@ -106,9 +111,14 @@ export default function Profile() {
 				sender: profile.accountId,
 				nonce: nonce.toString(),
 			});
+			const ethLeaf = tokenFilter(profile.tokenLeafs, TsTokenAddress.WETH);
+			const ethAmt = ethLeaf[0]?.amount || "0";
+			const usdLeaf = tokenFilter(profile.tokenLeafs, TsTokenAddress.USD);
+			const usdAmt = usdLeaf[0]?.amount || "0";
+
 			setAvailable({
-				goerliETH: profile.tokenLeafs[0].amount || "0",
-				testUSD: profile.tokenLeafs[1].amount || "0",
+				goerliETH: utils.formatEther(ethAmt),
+				testUSD: utils.formatEther(usdAmt),
 			});
 		}
 	}, [nonce, signer, tsAccount, profile]);

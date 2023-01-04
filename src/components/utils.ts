@@ -3,6 +3,7 @@ import { Bytes, getAddress } from 'ethers/lib/utils';
 import ERC20_ABI from "../abis/erc20_abi.json";
 import { ZK_OBS_CONTRACT_ADDRESS } from "../config";
 import ZK_OBS_CONTRACT_ABI from "../abis/zkOBS_abi.json";
+import { TsTokenAddress } from "zk-obs-sdk";
 
 export const fetchBalance = async (tokenAddr: string, signer: Signer) => {
   const token = new Contract(tokenAddr, ERC20_ABI, signer);
@@ -30,3 +31,9 @@ export function shortenAddress(address: string, chars = 4): string {
 export function getRandBytes20(): string {
   return ethers.utils.hexlify(ethers.utils.randomBytes(20));
 }
+
+export const tokenFilter = (tokenLeafs: any, tokenAddr: TsTokenAddress) => {
+  return tokenLeafs.filter(
+    (tokenLeaf: any) => tokenLeaf.tokenAddr === tokenAddr
+  );
+};

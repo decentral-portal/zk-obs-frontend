@@ -103,7 +103,7 @@ export const TsAccountProvider = ({ children }: { children: any }) => {
 			try {
 				const res = await axios.get(url, {
 					params: {
-						address,
+						L1Address: address,
 					},
 				});
 				if (res.data) {
