@@ -19,6 +19,7 @@ import {
 	Available,
 	Balance,
 	TEST_USD_CONTRACT_ADDR,
+	ZK_OBS_API_BASE_URL,
 	ZK_OBS_CONTRACT_ADDRESS,
 } from "../../config";
 import { fetchAccountId, fetchApprovedAmt, fetchBalance } from "../utils";
@@ -26,6 +27,7 @@ import styles from "./Profile.module.css";
 import { TsAccountContext } from "../TsAccountProvider";
 import { TsTokenAddress, TsTxType, TsTxWithdrawRequest } from "zk-obs-sdk";
 import { useSignWithdraw } from "../../hooks/useSignWithdraw";
+import axios from "axios";
 
 const STYLES = {
 	BLUE: {
@@ -41,7 +43,8 @@ const STYLES = {
 export default function Profile() {
 	const toast = useToast();
 	const { data: signer } = useSigner();
-	const { tsAccount, addNonce } = useContext(TsAccountContext);
+	const { tsAccount, profile, nonce, addNonce, fetchTsAccount } =
+		useContext(TsAccountContext);
 	const [approvedAmt, setApprovedAmt] = useState("0");
 	const [isApproved, setIsApproved] = useState(true);
 	const [isLoading, setIsLoading] = useState({
@@ -96,6 +99,20 @@ export default function Profile() {
 		}
 	};
 
+	useEffect(() => {
+		if (signer && tsAccount && profile) {
+			setWithdrawInfo({
+				...withdrawInfo,
+				sender: profile.accountId,
+				nonce: nonce.toString(),
+			});
+			setAvailable({
+				goerliETH: profile.tokenLeafs[0].amount || "0",
+				testUSD: profile.tokenLeafs[1].amount || "0",
+			});
+		}
+	}, [nonce, signer, tsAccount, profile]);
+
 	const selectDepositToken = (token: TsTokenAddress) => {
 		setDepositInfo({ ...depositInfo, token });
 	};
@@ -141,7 +158,13 @@ export default function Profile() {
 				);
 				const txReceipt = await res.wait();
 				updateBalance();
-				setIsApproved(true);
+				fetchApprovedAmt(
+					TEST_USD_CONTRACT_ADDR,
+					ZK_OBS_CONTRACT_ADDRESS,
+					signer
+				).then((res) => {
+					setApprovedAmt(res);
+				});
 				if (txReceipt.transactionHash) {
 					setIsLoading({ ...isLoading, approve: false });
 					toast({
@@ -182,7 +205,7 @@ export default function Profile() {
 						const res = await contract.registerETH(
 							tsPubKey[0].toString(),
 							tsPubKey[1].toString(),
-							depositAmt
+							{ value: depositAmt }
 						);
 						const txReceipt = await res.wait();
 						updateBalance();
@@ -208,7 +231,7 @@ export default function Profile() {
 					}
 				} else {
 					try {
-						const res = await contract.depositETH(depositAmt);
+						const res = await contract.depositETH({ value: depositAmt });
 						const txReceipt = await res.wait();
 						updateBalance();
 						if (txReceipt.transactionHash) {
@@ -297,7 +320,7 @@ export default function Profile() {
 	};
 
 	const handleWithdraw = async () => {
-		if (signer && tsAccount) {
+		if (signer && tsAccount && profile) {
 			setIsLoading({ ...isLoading, withdraw: true });
 			const req = tsAccount.prepareTxWithdraw(
 				withdrawInfo.sender,
@@ -310,7 +333,7 @@ export default function Profile() {
 				eddsaSig: req.eddsaSig,
 			});
 			try {
-				await signTypedDataAsync();
+				const req = await signTypedDataAsync();
 			} catch (error) {
 				setIsLoading({ ...isLoading, withdraw: false });
 				console.error(error);
@@ -354,14 +377,15 @@ export default function Profile() {
 	};
 
 	// approve amount Info
-	useMemo(async () => {
+	useEffect(() => {
 		if (signer) {
-			const approvedAmt = await fetchApprovedAmt(
+			fetchApprovedAmt(
 				TEST_USD_CONTRACT_ADDR,
 				ZK_OBS_CONTRACT_ADDRESS,
 				signer
-			);
-			setApprovedAmt(approvedAmt);
+			).then((res) => {
+				setApprovedAmt(res);
+			});
 		}
 	}, [signer]);
 
@@ -403,10 +427,30 @@ export default function Profile() {
 	useEffect(() => {
 		if (withdrawInfo.ecdsaSig !== "") {
 			console.log("withdrawInfo", withdrawInfo);
-			//TODO POST API
-			addNonce();
+			const url = `${ZK_OBS_API_BASE_URL}/v1/ts/transaction/withdraw`;
+			try {
+				const res = placeOrder(url, withdrawInfo).then((res) => {
+					setWithdrawInfo({
+						...withdrawInfo,
+						ecdsaSig: "",
+					});
+					fetchTsAccount();
+					addNonce();
+				});
+			} catch (error) {
+				console.error(error);
+			}
 		}
 	}, [withdrawInfo]);
+
+	const placeOrder = async (url: string, orderInfo: TsTxWithdrawRequest) => {
+		try {
+			const res = await axios.post(url, orderInfo);
+			return res;
+		} catch (error) {
+			console.error(error);
+		}
+	};
 
 	return (
 		<div className={styles.CONTAINER}>
