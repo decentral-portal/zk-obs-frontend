@@ -7,7 +7,7 @@ import { configureChains, createClient, goerli, WagmiConfig } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import { alchemyProvider } from "wagmi/providers/alchemy";
 import { publicProvider } from "wagmi/providers/public";
-import { APP_ALCHEMY_ID } from "../config";
+import { APP_ALCHEMY_ID, VALID_CHAIN } from "../config";
 import {
 	TsAccountContext,
 	TsAccountProvider,
@@ -16,7 +16,7 @@ import { useContext, useEffect } from "react";
 import { InjectedConnector } from "wagmi/connectors/injected";
 
 const { chains, provider } = configureChains(
-	[mainnet, goerli],
+	[VALID_CHAIN],
 	[alchemyProvider({ apiKey: APP_ALCHEMY_ID }), publicProvider()]
 );
 

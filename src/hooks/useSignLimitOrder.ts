@@ -1,17 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ZK_OBS_CONTRACT_ADDRESS, VALID_CHAIN } from '../config';
 import { useSignTypedData } from 'wagmi';
-import { TsTokenAddress, TsTxType } from 'zk-obs-sdk';
+import { TsTxLimitOrderNonSignatureRequest, TsTxType } from 'zk-obs-sdk';
 import { TypedDataDomain, TypedDataField } from 'ethers';
 
-export const useSignLimitOrderReq = (
-  sender: string,
-  sellTokenId: string,
-  sellAmt: string,
-  nonce: string,
-  buyTokenId: string,
-  buyAmt: string,
-) => {
+export const useSignLimitOrderReq = (orderInfo: TsTxLimitOrderNonSignatureRequest) => {
 
   const typedData = useMemo(() => ({
     domain: {
@@ -35,14 +28,14 @@ export const useSignLimitOrderReq = (
     value: {
       Action: 'Place Limit Order',
       reqType: TsTxType.LIMIT_ORDER,
-      sender: sender,
-      sellTokenId: sellTokenId,
-      sellAmt: sellAmt,
-      nonce: nonce,
-      buyTokenId: buyTokenId,
-      buyAmt: buyAmt,
+      sender: orderInfo.sender,
+      sellTokenId: orderInfo.sellTokenId,
+      sellAmt: orderInfo.sellAmt,
+      nonce: orderInfo.nonce,
+      buyTokenId: orderInfo.buyTokenId,
+      buyAmt: orderInfo.buyAmt,
     } as  Record<string, any>,
-  }), [buyAmt, buyTokenId, nonce, sellAmt, sellTokenId, sender]);
+  }), [orderInfo]);
 
   const {
     data: signature,

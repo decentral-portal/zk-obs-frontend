@@ -6,7 +6,7 @@ import {
 	Spinner,
 } from "@chakra-ui/react";
 import React, { useContext, useEffect, useState } from "react";
-import { TsTokenAddress, TsTxLimitOrderRequest, TsTxType } from "zk-obs-sdk";
+import { TsTokenAddress, TsTxLimitOrderNonSignatureRequest, TsTxLimitOrderRequest, TsTxType } from "zk-obs-sdk";
 import { Available, OrderType } from "../config";
 import { TsAccountContext } from "./TsAccountProvider";
 import { useSigner } from "wagmi";
@@ -15,6 +15,13 @@ import { useSignLimitOrderReq } from "../hooks/useSignLimitOrder";
 import axios from "axios";
 import { ZK_OBS_API_BASE_URL } from "../config";
 import { tokenFilter } from "./utils";
+import { useMemo } from 'react';
+const PLACE_ORDER_URL = `${ZK_OBS_API_BASE_URL}/v1/ts/transaction/placeOrder`;
+
+
+async function sendPlaceOrderReq(orderInfo: TsTxLimitOrderRequest) {
+	return await axios.post(PLACE_ORDER_URL, orderInfo);
+};
 
 const STYLES = {
 	CONTAINER: {
@@ -40,6 +47,13 @@ interface OrderCardProps {
 
 export default function LimitOrderCard(props: OrderCardProps) {
 	const { orderType, tokens } = props;
+	const pairToken = (orderType === OrderType.BUY) ? {
+		sellTokenId: TsTokenAddress.USD,
+		buyTokenId: TsTokenAddress.WETH,
+	} :  {
+		sellTokenId: TsTokenAddress.WETH,
+		buyTokenId: TsTokenAddress.USD,
+	};
 	const { data: signer } = useSigner();
 	const { tsAccount, profile, nonce, addNonce, fetchTsAccount } =
 		useContext(TsAccountContext);
@@ -49,80 +63,49 @@ export default function LimitOrderCard(props: OrderCardProps) {
 		goerliETH: "0",
 		testUSD: "0",
 	});
-	const [orderInfo, setOrderInfo] = useState<TsTxLimitOrderRequest>({
-		reqType: TsTxType.LIMIT_ORDER,
-		sender: "",
-		sellTokenId: TsTokenAddress.UNKNOWN,
+	const [amountInfo, setAmountInfo] = useState({
 		sellAmt: "",
-		nonce: "",
-		buyTokenId: TsTokenAddress.UNKNOWN,
 		buyAmt: "",
-		eddsaSig: {
-			R8: ["", ""],
-			S: "",
-		},
-		ecdsaSig: "",
 	});
+
+	const orderInfo = useMemo<TsTxLimitOrderNonSignatureRequest>(() => ({
+		reqType: TsTxType.LIMIT_ORDER,
+		sellAmt: amountInfo.sellAmt,
+		buyAmt: amountInfo.buyAmt,
+		sellTokenId: pairToken.sellTokenId,
+		buyTokenId: pairToken.buyTokenId,
+		sender: profile?.accountId,
+		nonce: nonce.toString(),
+	}), [amountInfo, profile, nonce,]);
+
 	const {
-		signature: ecdsaSig,
-		isSuccess,
-		reset,
 		signTypedDataAsync,
-	} = useSignLimitOrderReq(
-		orderInfo.sender,
-		orderInfo.sellTokenId,
-		orderInfo.sellAmt,
-		orderInfo.nonce,
-		orderInfo.buyTokenId,
-		orderInfo.buyAmt
-	);
+		signature: ecdsaSig,
+		reset,
+	} = useSignLimitOrderReq(orderInfo);
 
-	useEffect(() => {
-		if (orderType === OrderType.BUY) {
-			setOrderInfo({
-				...orderInfo,
-				sellTokenId: TsTokenAddress.USD,
-				buyTokenId: TsTokenAddress.WETH,
-			});
-		} else if (orderType === OrderType.SELL) {
-			setOrderInfo({
-				...orderInfo,
-				sellTokenId: TsTokenAddress.WETH,
-				buyTokenId: TsTokenAddress.USD,
-			});
-		} else {
-			return;
-		}
-	}, []);
-
+	/** available amount */
 	useEffect(() => {
 		if (signer && tsAccount && profile) {
-			setOrderInfo({
-				...orderInfo,
-				sender: profile.accountId,
-				nonce: nonce.toString(),
-			});
 			const ethLeaf = tokenFilter(profile.tokenLeafs, TsTokenAddress.WETH);
 			const ethAmt = ethLeaf[0]?.amount || "0";
 			const usdLeaf = tokenFilter(profile.tokenLeafs, TsTokenAddress.USD);
 			const usdAmt = usdLeaf[0]?.amount || "0";
-
 			setAvailable({
 				goerliETH: ethAmt,
 				testUSD: usdAmt,
 			});
 		}
-	}, [nonce, signer, tsAccount, profile]);
+	}, [signer, tsAccount, profile]);
 
+	/* amountInfo */
 	const setAmt = (amount: string) => {
 		const buyAmt = getBuyAmt(price, amount);
-		setOrderInfo({
-			...orderInfo,
+		setAmountInfo({
 			sellAmt: amount,
 			buyAmt: buyAmt,
 		});
 	};
-
 	const getBuyAmt = (price: string, sellAmt: string): string => {
 		if (price === "" || sellAmt === "") {
 			return "";
@@ -142,63 +125,32 @@ export default function LimitOrderCard(props: OrderCardProps) {
 	const handleOrder = async () => {
 		if (signer && tsAccount && profile) {
 			setIsLoading(true);
-			const req = tsAccount.prepareTxLimitOrder(
-				orderInfo.sender,
-				orderInfo.sellTokenId,
-				orderInfo.sellAmt,
-				orderInfo.nonce,
-				orderInfo.buyTokenId,
-				orderInfo.buyAmt
-			);
-			setOrderInfo({
-				...orderInfo,
-				eddsaSig: req.eddsaSig,
-			});
+
 			try {
-				const res = await signTypedDataAsync();
+				const req = tsAccount.prepareTxLimitOrder(
+					orderInfo.sender,
+					orderInfo.sellTokenId,
+					orderInfo.sellAmt,
+					orderInfo.nonce,
+					orderInfo.buyTokenId,
+					orderInfo.buyAmt
+				);
+				const signature = await signTypedDataAsync();
+				req.ecdsaSig = signature;
+				console.log({
+					req
+				})
+				reset();
+				await sendPlaceOrderReq(req);
+				fetchTsAccount();
+				addNonce();
 			} catch (error) {
+				console.error(error);
+				reset();
 				setIsLoading(false);
-				console.error(error);
+				fetchTsAccount();
+				addNonce();
 			}
-		}
-	};
-
-	useEffect(() => {
-		if (isSuccess && ecdsaSig) {
-			setIsLoading(false);
-			setOrderInfo({
-				...orderInfo,
-				ecdsaSig: ecdsaSig,
-			});
-			reset();
-		}
-	}, [isSuccess, ecdsaSig, orderInfo]);
-
-	useEffect(() => {
-		if (orderInfo.ecdsaSig !== "") {
-			console.log("orderInfo", orderInfo);
-			const url = `${ZK_OBS_API_BASE_URL}/v1/ts/transaction/placeOrder`;
-			try {
-				const res = placeOrder(url, orderInfo).then((res) => {
-					setOrderInfo({
-						...orderInfo,
-						ecdsaSig: "",
-					});
-					fetchTsAccount();
-					addNonce();
-				});
-			} catch (error) {
-				console.error(error);
-			}
-		}
-	}, [addNonce, orderInfo]);
-
-	const placeOrder = async (url: string, orderInfo: TsTxLimitOrderRequest) => {
-		try {
-			const res = await axios.post(url, orderInfo);
-			return res;
-		} catch (error) {
-			console.error(error);
 		}
 	};
 
@@ -206,9 +158,10 @@ export default function LimitOrderCard(props: OrderCardProps) {
 		<div style={STYLES.CONTAINER}>
 			<InputGroup>
 				<Input
-					type="price"
+					type="number"
 					placeholder="price"
 					onChange={(e) => {
+						console.log("up", e.target.value);
 						setPrice(e.target.value);
 					}}
 				/>
@@ -223,9 +176,13 @@ export default function LimitOrderCard(props: OrderCardProps) {
 			</span>
 			<InputGroup>
 				<Input
-					type="amt"
+					type="number"
 					placeholder="amount"
 					onChange={(e) => {
+						console.log("e.target.value", e.target.value);
+						console.log({
+							t: utils.parseEther(e.target.value).toString(),
+						})
 						setAmt(utils.parseEther(e.target.value).toString());
 					}}
 				/>

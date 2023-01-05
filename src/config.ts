@@ -1,10 +1,11 @@
-import { goerli } from 'wagmi';
+import { hardhat } from "@wagmi/chains";
+
 export const APP_ALCHEMY_ID = getString(process.env.NEXT_PUBLIC_ALCHEMY_ID);
 export const ZK_OBS_CONTRACT_ADDRESS = getString(process.env.NEXT_PUBLIC_ZK_OBS_CONTRACT);
 export const ZK_OBS_API_BASE_URL = getString(process.env.NEXT_PUBLIC_ZK_OBS_API_BASE_URL);
-export const TEST_USD_CONTRACT_ADDR = "0x5a8f799513f8806dd14ed4d374faded660ebc24f"
+export const TEST_USD_CONTRACT_ADDR = getString(process.env.NEXT_PUBLIC_ZK_OBS_TEST_USD_CONTRACT_ADDR);
 export const PRIV_HASH_ITERATIONS = 100;
-export const VALID_CHAIN = goerli;
+export const VALID_CHAIN = hardhat;
 
 export enum TokenLabel {
   goerliETH = 'ETH',
